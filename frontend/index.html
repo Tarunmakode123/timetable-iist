@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timetable Assistant</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts (Inter) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f9fafb;
+        }
+        /* Custom Orange Pulse Animation for Conflict Cells */
+        @keyframes orangePulse {
+            0%, 100% {
+                background-color: rgba(249, 115, 22, 0.15);
+                border-color: rgba(249, 115, 22, 0.5);
+                box-shadow: 0 0 0 0px rgba(249, 115, 22, 0.4);
+            }
+            50% {
+                background-color: rgba(249, 115, 22, 0.35);
+                border-color: rgba(249, 115, 22, 1);
+                box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.2);
+            }
+        }
+        .conflict-cell {
+            animation: orangePulse 2s infinite ease-in-out;
+            border-width: 2px;
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <!-- LOGIN SCREEN -->
+    <div id="login-screen" class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-md border border-gray-100">
+            <div>
+                <div class="flex justify-center text-orange-500 text-5xl mb-4">
+                    <i class="fa-solid fa-calendar-days"></i>
+                </div>
+                <h2 class="text-center text-3xl font-extrabold text-gray-900">
+                    Timetable Assistant
+                </h2>
+                <p class="mt-2 text-center text-sm text-gray-600">
+                    Sign in to your account
+                </p>
+            </div>
+            <form class="mt-8 space-y-6" id="login-form">
+                <div class="rounded-md shadow-sm -space-y-px">
+                    <div>
+                        <label for="username" class="sr-only">Username</label>
+                        <input id="username" name="username" type="text" required class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm" placeholder="Username (e.g. admin)">
+                    </div>
+                    <div>
+                        <label for="password" class="sr-only">Password</label>
+                        <input id="password" name="password" type="password" required class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm" placeholder="Password">
+                    </div>
+                </div>
+
+                <div class="text-xs text-gray-500 bg-gray-50 p-2 rounded text-center">
+                    Demo accounts: <span class="font-bold">admin / admin123</span> or seeded faculty initials in lowercase (password: <span class="font-bold">faculty123</span>)
+                </div>
+
+                <div id="login-error" class="hidden text-red-500 text-sm text-center"></div>
+
+                <div>
+                    <button type="submit" class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500">
+                        Sign In
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MAIN DASHBOARD (Hidden initially) -->
+    <div id="main-dashboard" class="hidden min-h-screen flex flex-col">
+        <!-- Navigation Header -->
+        <header class="bg-white border-b border-gray-200">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex items-center space-x-3">
+                        <div class="text-orange-600 text-2xl">
+                            <i class="fa-solid fa-calendar-days"></i>
+                        </div>
+                        <span class="font-bold text-xl text-gray-900">Timetable Assistant</span>
+                    </div>
+                    
+                    <div class="flex items-center space-x-4">
+                        <span id="user-display" class="text-sm text-gray-600"></span>
+                        <button id="logout-btn" class="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-md transition font-medium">
+                            <i class="fa-solid fa-right-from-bracket mr-1"></i> Logout
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Body -->
+        <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col lg:flex-row gap-6">
+            <!-- Sidebar Panel: Controls & Conflicts -->
+            <div class="w-full lg:w-1/4 flex flex-col gap-6">
+                <!-- Controls Card -->
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-4">
+                    <h3 class="font-bold text-lg text-gray-900 border-b border-gray-100 pb-2">Schedule View</h3>
+                    
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">View Type</label>
+                        <select id="view-type-select" class="w-full border border-gray-300 rounded-md p-2 text-sm bg-white focus:ring-orange-500 focus:border-orange-500">
+                            <option value="section">Section-wise View</option>
+                            <option value="faculty">Faculty-wise View</option>
+                            <option value="room">Room-wise View</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Select Item</label>
+                        <select id="view-item-select" class="w-full border border-gray-300 rounded-md p-2 text-sm bg-white focus:ring-orange-500 focus:border-orange-500">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+
+                    <div class="admin-only pt-2 border-t border-gray-100 space-y-2">
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Administrative Actions</label>
+                        <button id="seed-btn" class="w-full bg-orange-50 text-orange-700 hover:bg-orange-100 px-4 py-2 rounded-md text-sm font-medium transition text-left flex items-center justify-between">
+                            <span><i class="fa-solid fa-database mr-2"></i> Seed Legacy Excel</span>
+                            <i class="fa-solid fa-chevron-right text-xs"></i>
+                        </button>
+                        <button id="add-assignment-btn" class="w-full bg-orange-600 text-white hover:bg-orange-700 px-4 py-2 rounded-md text-sm font-medium transition text-left flex items-center justify-between shadow-sm">
+                            <span><i class="fa-solid fa-plus mr-2"></i> Add Manual Entry</span>
+                            <i class="fa-solid fa-plus text-xs"></i>
+                        </button>
+                        <button id="upload-csv-btn" class="w-full bg-gray-800 text-white hover:bg-gray-900 px-4 py-2 rounded-md text-sm font-medium transition text-left flex items-center justify-between">
+                            <span><i class="fa-solid fa-file-csv mr-2"></i> Bulk CSV Import</span>
+                            <i class="fa-solid fa-upload text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Conflict Panel Card -->
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex-grow flex flex-col min-h-[300px]">
+                    <div class="flex items-center justify-between border-b border-gray-100 pb-2 mb-3">
+                        <h3 class="font-bold text-lg text-gray-900">Validation Panel</h3>
+                        <span id="conflict-badge" class="bg-green-100 text-green-800 text-xs px-2.5 py-0.5 rounded-full font-semibold">No Conflicts</span>
+                    </div>
+
+                    <div id="conflict-list" class="overflow-y-auto max-h-[450px] flex-grow space-y-3 pr-1 text-sm">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content Area: Grid View -->
+            <div class="flex-grow bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col">
+                <div class="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
+                    <div>
+                        <h2 id="grid-title" class="text-xl font-bold text-gray-900">CS-1 II Year Timetable</h2>
+                        <p id="grid-subtitle" class="text-sm text-gray-500 mt-1">Select a filter type to display schedule details</p>
+                    </div>
+                    
+                    <!-- Date Version selector (for class-wise effective dates) -->
+                    <div id="date-version-panel" class="hidden flex items-center space-x-2">
+                        <span class="text-xs text-gray-500 font-semibold uppercase tracking-wider">Date Version:</span>
+                        <select id="date-version-select" class="border border-gray-300 rounded-md px-2 py-1 text-sm bg-white focus:outline-none">
+                            <option value="2024-09-30">Grid (30.09.24)</option>
+                            <option value="2024-11-18">Grid (18.11.24)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Weekly Grid Container -->
+                <div class="overflow-x-auto flex-grow">
+                    <table class="min-w-full border-collapse border border-gray-200 text-center text-sm table-fixed">
+                        <thead>
+                            <tr class="bg-gray-50">
+                                <th class="border border-gray-200 w-24 py-3 font-semibold text-gray-600">Day / Period</th>
+                                <th class="border border-gray-200 font-semibold text-gray-600">P1<br><span class="text-xs text-gray-400">09:30-10:20</span></th>
+                                <th class="border border-gray-200 font-semibold text-gray-600">P2<br><span class="text-xs text-gray-400">10:20-11:10</span></th>
+                                <th class="border border-gray-200 font-semibold text-gray-600">P3<br><span class="text-xs text-gray-400">11:10-12:00</span></th>
+                                <th class="border border-gray-200 font-semibold text-gray-600">P4<br><span class="text-xs text-gray-400">12:00-12:50</span></th>
+                                <th class="border border-gray-200 font-semibold text-gray-600 bg-orange-50/50 w-20 text-orange-800 font-medium">LUNCH<br><span class="text-xs text-orange-400">12:50-01:40</span></th>
+                                <th class="border border-gray-200 font-semibold text-gray-600">P5<br><span class="text-xs text-gray-400">01:40-02:30</span></th>
+                                <th class="border border-gray-200 font-semibold text-gray-600">P6<br><span class="text-xs text-gray-400">02:30-03:20</span></th>
+                                <th class="border border-gray-200 font-semibold text-gray-600">P7<br><span class="text-xs text-gray-400">03:20-04:10</span></th>
+                            </tr>
+                        </thead>
+                        <tbody id="grid-body" class="bg-white">
+                            <!-- Rendered dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL: ADD/EDIT ASSIGNMENT -->
+    <div id="assignment-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-lg max-w-md w-full p-6 space-y-4 border border-gray-100">
+            <div class="flex justify-between items-center border-b border-gray-100 pb-3">
+                <h3 id="modal-title" class="font-bold text-lg text-gray-900">Add Timetable Assignment</h3>
+                <button onclick="closeModal('assignment-modal')" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form id="assignment-form" class="space-y-3">
+                <input type="hidden" id="edit-assignment-id">
+                
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Faculty</label>
+                    <select id="form-faculty" required class="w-full border border-gray-300 rounded p-2 text-sm bg-white"></select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Subject</label>
+                    <select id="form-subject" required class="w-full border border-gray-300 rounded p-2 text-sm bg-white"></select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Section</label>
+                    <select id="form-section" class="w-full border border-gray-300 rounded p-2 text-sm bg-white">
+                        <option value="">None</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Batch (Optional)</label>
+                    <select id="form-batch" class="w-full border border-gray-300 rounded p-2 text-sm bg-white">
+                        <option value="">Entire Section</option>
+                        <option value="B1">Batch B1</option>
+                        <option value="B2">Batch B2</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Room</label>
+                    <select id="form-room" required class="w-full border border-gray-300 rounded p-2 text-sm bg-white"></select>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Day</label>
+                        <select id="form-day" required class="w-full border border-gray-300 rounded p-2 text-sm bg-white">
+                            <option value="Monday">Monday</option>
+                            <option value="Tuesday">Tuesday</option>
+                            <option value="Wednesday">Wednesday</option>
+                            <option value="Thursday">Thursday</option>
+                            <option value="Friday">Friday</option>
+                            <option value="Saturday">Saturday</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Period</label>
+                        <select id="form-period" required class="w-full border border-gray-300 rounded p-2 text-sm bg-white">
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                            <option value="6">6</option>
+                            <option value="7">7</option>
+                            <option value="8">8</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Effective From</label>
+                        <input type="date" id="form-effective-from" value="2026-08-30" required class="w-full border border-gray-300 rounded p-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Effective To</label>
+                        <input type="date" id="form-effective-to" class="w-full border border-gray-300 rounded p-2 text-sm">
+                    </div>
+                </div>
+                
+                <div class="flex justify-between items-center pt-3 border-t border-gray-100">
+                    <button type="button" id="delete-assignment-btn" class="hidden bg-red-50 text-red-700 hover:bg-red-100 px-4 py-2 rounded text-sm font-medium transition">
+                        Delete
+                    </button>
+                    <div class="flex space-x-2 ml-auto">
+                        <button type="button" onclick="closeModal('assignment-modal')" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm font-medium transition">Cancel</button>
+                        <button type="submit" class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded text-sm font-medium transition shadow-sm">Save</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: CSV BULK IMPORT -->
+    <div id="csv-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-lg max-w-2xl w-full p-6 space-y-4 border border-gray-100 flex flex-col max-h-[85vh]">
+            <div class="flex justify-between items-center border-b border-gray-100 pb-3">
+                <h3 class="font-bold text-lg text-gray-900">Bulk CSV Ingestion Flow</h3>
+                <button onclick="closeModal('csv-modal')" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            
+            <div class="space-y-3 flex-shrink-0">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Data Model Type</label>
+                        <select id="csv-type" class="w-full border border-gray-300 rounded p-2 text-sm bg-white">
+                            <option value="assignments">Timetable Assignments</option>
+                            <option value="faculty">Faculty Directory</option>
+                            <option value="subjects">Subjects Catalog</option>
+                            <option value="rooms">Rooms List</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Select CSV File</label>
+                        <input type="file" id="csv-file-input" accept=".csv" class="w-full text-sm">
+                    </div>
+                </div>
+                <button type="button" id="csv-preview-btn" class="w-full bg-gray-800 text-white hover:bg-gray-900 py-2 rounded text-sm font-medium transition shadow-sm">
+                    Upload & Preview Data
+                </button>
+            </div>
+
+            <!-- Preview panel -->
+            <div id="csv-preview-panel" class="hidden flex-grow flex flex-col min-h-[250px] overflow-hidden">
+                <h4 class="font-semibold text-sm text-gray-700 mb-2 border-b border-gray-100 pb-1">CSV File Preview (First 50 Rows)</h4>
+                
+                <!-- Errors alert -->
+                <div id="csv-errors-alert" class="hidden bg-red-50 border border-red-200 text-red-800 p-3 rounded text-sm mb-3 max-h-[100px] overflow-y-auto">
+                    <!-- Populated dynamically -->
+                </div>
+
+                <div class="overflow-auto border border-gray-200 rounded flex-grow max-h-[300px]">
+                    <table class="min-w-full text-xs text-left text-gray-500">
+                        <thead class="bg-gray-50 text-gray-700 uppercase tracking-wider font-semibold border-b border-gray-200 sticky top-0">
+                            <tr id="csv-table-headers">
+                                <!-- Headers -->
+                            </tr>
+                        </thead>
+                        <tbody id="csv-table-body" class="bg-white divide-y divide-gray-100">
+                            <!-- Preview rows -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="flex justify-between items-center mt-4 pt-3 border-t border-gray-100 flex-shrink-0">
+                    <span id="csv-summary-text" class="text-sm text-gray-600 font-medium"></span>
+                    <div class="flex space-x-2">
+                        <button type="button" onclick="closeModal('csv-modal')" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm font-medium transition">Cancel</button>
+                        <button type="button" id="csv-commit-btn" class="bg-orange-600 hover:bg-orange-700 text-white px-5 py-2 rounded text-sm font-medium transition shadow-sm">Commit to Database</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT STATE & LOGIC -->
+    <script>
+        const API_URL = ""; // Serve from same host
+        let userToken = localStorage.getItem("token") || "";
+        let userRole = localStorage.getItem("role") || "";
+        let userFacultyId = localStorage.getItem("faculty_id") || "";
+        
+        let allAssignments = [];
+        let allFaculty = [];
+        let allSubjects = [];
+        let allRooms = [];
+        let allSections = [];
+        let allTimeSlots = [];
+        
+        let selectedView = "section"; // 'section', 'faculty', 'room'
+        let selectedItemId = "";
+        let selectedDateVersion = "2024-09-30";
+        let activeConflicts = [];
+        let highlightConflictIds = []; // Conflict IDs currently selected to highlight
+
+        // 1. Initial Page Load check
+        window.addEventListener("DOMContentLoaded", () => {
+            initApp();
+            
+            // Event Listeners
+            document.getElementById("login-form").addEventListener("submit", handleLogin);
+            document.getElementById("logout-btn").addEventListener("click", handleLogout);
+            document.getElementById("view-type-select").addEventListener("change", handleViewTypeChange);
+            document.getElementById("view-item-select").addEventListener("change", handleViewItemChange);
+            document.getElementById("date-version-select").addEventListener("change", handleDateVersionChange);
+            document.getElementById("seed-btn").addEventListener("click", handleLegacySeeding);
+            document.getElementById("add-assignment-btn").addEventListener("click", () => openAssignmentModal());
+            document.getElementById("assignment-form").addEventListener("submit", handleSaveAssignment);
+            document.getElementById("upload-csv-btn").addEventListener("click", () => openCSVModal());
+            document.getElementById("csv-preview-btn").addEventListener("click", handleCSVPreview);
+            document.getElementById("csv-commit-btn").addEventListener("click", handleCSVCommit);
+        });
+
+        function getAuthHeaders() {
+            return {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${userToken}`
+            };
+        }
+
+        async function initApp() {
+            if (!userToken) {
+                showView("login-screen");
+                return;
+            }
+            
+            showView("main-dashboard");
+            document.getElementById("user-display").innerHTML = `Logged in as: <span class="font-bold text-gray-800">${localStorage.getItem("username")}</span> (${userRole})`;
+            
+            // Show/hide admin options
+            if (userRole === "admin") {
+                document.querySelectorAll(".admin-only").forEach(el => el.classList.remove("hidden"));
+            } else {
+                document.querySelectorAll(".admin-only").forEach(el => el.classList.add("hidden"));
+                // If faculty is logged in, default view type to faculty and item select to their faculty_id, and lock selections if needed.
+                if (userFacultyId) {
+                    document.getElementById("view-type-select").value = "faculty";
+                    document.getElementById("view-type-select").disabled = true;
+                    selectedView = "faculty";
+                }
+            }
+            
+            await fetchAllData();
+            populateViewItems();
+            fetchConflicts();
+        }
+
+        function showView(viewId) {
+            document.getElementById("login-screen").classList.add("hidden");
+            document.getElementById("main-dashboard").classList.add("hidden");
+            document.getElementById(viewId).classList.remove("hidden");
+        }
+
+        // 2. Auth handlers
+        async function handleLogin(e) {
+            e.preventDefault();
+            const usernameInput = document.getElementById("username").value;
+            const passwordInput = document.getElementById("password").value;
+            const errorDiv = document.getElementById("login-error");
+            
+            errorDiv.classList.add("hidden");
+            
+            try {
+                const res = await fetch(`${API_URL}/api/auth/login`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username: usernameInput, password: passwordInput })
+                });
+                
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || "Authentication failed");
+                }
+                
+                const data = await res.json();
+                userToken = data.token;
+                userRole = data.role;
+                userFacultyId = data.faculty_id || "";
+                
+                localStorage.setItem("token", userToken);
+                localStorage.setItem("role", userRole);
+                localStorage.setItem("username", data.username);
+                localStorage.setItem("faculty_id", userFacultyId);
+                
+                initApp();
+            } catch (err) {
+                errorDiv.innerText = err.message;
+                errorDiv.classList.remove("hidden");
+            }
+        }
+
+        function handleLogout() {
+            localStorage.clear();
+            userToken = "";
+            userRole = "";
+            userFacultyId = "";
+            showView("login-screen");
+        }
+
+        // 3. Data fetching
+        async function fetchAllData() {
+            try {
+                const [facRes, subRes, roomRes, secRes, tsRes, assignRes] = await Promise.all([
+                    fetch(`${API_URL}/api/faculty`, { headers: getAuthHeaders() }),
+                    fetch(`${API_URL}/api/subjects`, { headers: getAuthHeaders() }),
+                    fetch(`${API_URL}/api/rooms`, { headers: getAuthHeaders() }),
+                    fetch(`${API_URL}/api/sections`, { headers: getAuthHeaders() }),
+                    fetch(`${API_URL}/api/timeslots`, { headers: getAuthHeaders() }),
+                    fetch(`${API_URL}/api/assignments`, { headers: getAuthHeaders() })
+                ]);
+                
+                allFaculty = await facRes.json();
+                allSubjects = await subRes.json();
+                allRooms = await roomRes.json();
+                allSections = await secRes.json();
+                allTimeSlots = await tsRes.json();
+                allAssignments = await assignRes.json();
+            } catch (err) {
+                console.error("Error fetching data", err);
+            }
+        }
+
+        async function fetchConflicts() {
+            try {
+                const res = await fetch(`${API_URL}/api/conflicts`, { headers: getAuthHeaders() });
+                const data = await res.json();
+                activeConflicts = data.conflicts;
+                renderConflicts(data);
+                renderGrid(); // Redraw grid with conflicts highlighted
+            } catch (err) {
+                console.error("Error fetching conflicts", err);
+            }
+        }
+
+        // 4. View items population
+        function populateViewItems() {
+            const select = document.getElementById("view-item-select");
+            select.innerHTML = "";
+            
+            if (selectedView === "section") {
+                document.getElementById("date-version-panel").classList.remove("hidden");
+                allSections.forEach(s => {
+                    const opt = document.createElement("option");
+                    opt.value = s.id;
+                    opt.innerText = `${s.name} (${s.year} Year)`;
+                    select.appendChild(opt);
+                });
+            } else if (selectedView === "faculty") {
+                document.getElementById("date-version-panel").classList.add("hidden");
+                
+                // If logged in faculty, restrict choices
+                if (userRole === "faculty" && userFacultyId) {
+                    const matched = allFaculty.find(f => f.id === userFacultyId);
+                    if (matched) {
+                        const opt = document.createElement("option");
+                        opt.value = matched.id;
+                        opt.innerText = matched.full_name;
+                        select.appendChild(opt);
+                    }
+                } else {
+                    allFaculty.forEach(f => {
+                        const opt = document.createElement("option");
+                        opt.value = f.id;
+                        opt.innerText = f.full_name;
+                        select.appendChild(opt);
+                    });
+                }
+            } else if (selectedView === "room") {
+                document.getElementById("date-version-panel").classList.add("hidden");
+                allRooms.forEach(r => {
+                    const opt = document.createElement("option");
+                    opt.value = r.id;
+                    opt.innerText = `${r.name} (${r.type})`;
+                    select.appendChild(opt);
+                });
+            }
+            
+            // Set first item as selected
+            if (select.options.length > 0) {
+                selectedItemId = select.value;
+            } else {
+                selectedItemId = "";
+            }
+            renderGrid();
+        }
+
+        function handleViewTypeChange(e) {
+            selectedView = e.target.value;
+            populateViewItems();
+        }
+
+        function handleViewItemChange(e) {
+            selectedItemId = e.target.value;
+            renderGrid();
+        }
+
+        function handleDateVersionChange(e) {
+            selectedDateVersion = e.target.value;
+            renderGrid();
+        }
+
+        // 5. Grid Rendering with pulsing animations for conflicts
+        function renderGrid() {
+            const body = document.getElementById("grid-body");
+            body.innerHTML = "";
+            
+            // Title updates
+            const gridTitle = document.getElementById("grid-title");
+            const select = document.getElementById("view-item-select");
+            const activeText = select.options.length > 0 ? select.options[select.selectedIndex].text : "No Selection";
+            gridTitle.innerText = `${activeText} - Timetable`;
+            
+            document.getElementById("grid-subtitle").innerText = `Filtered by: ${selectedView.toUpperCase()} | Effective Date Version: ${selectedView === "section" ? selectedDateVersion : "General Stack"}`;
+
+            const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+            
+            days.forEach(day => {
+                const tr = document.createElement("tr");
+                const dayTd = document.createElement("td");
+                dayTd.className = "border border-gray-200 font-semibold bg-gray-50 py-4";
+                dayTd.innerText = day;
+                tr.appendChild(dayTd);
+                
+                for (let p = 1; p <= 8; p++) {
+                    // Lunch break column
+                    if (p === 5) {
+                        const lunchTd = document.createElement("td");
+                        lunchTd.className = "border border-gray-200 bg-orange-50/20 text-orange-500 font-semibold text-xs uppercase italic";
+                        lunchTd.innerText = "LUNCH";
+                        tr.appendChild(lunchTd);
+                    }
+                    
+                    const cellTd = document.createElement("td");
+                    cellTd.className = "border border-gray-200 p-2 text-xs relative align-top hover:bg-gray-50 transition cursor-pointer min-h-[80px]";
+                    
+                    const tsId = `${day}_${p}`;
+                    
+                    // Filter assignments for this specific view element & timeslot & date range
+                    const cellAssignments = allAssignments.filter(a => {
+                        if (a.timeslot_id !== tsId) return false;
+                        
+                        // If section view, check date versioning
+                        if (selectedView === "section") {
+                            if (a.section_id !== selectedItemId) return false;
+                            
+                            // Parse dates
+                            const effFrom = new Date(a.effective_from);
+                            const effTo = a.effective_to ? new Date(a.effective_to) : null;
+                            const selDate = new Date(selectedDateVersion);
+                            
+                            if (effFrom > selDate) return false;
+                            if (effTo && effTo < selDate) return false;
+                        } else if (selectedView === "faculty") {
+                            if (a.faculty_id !== selectedItemId) return false;
+                        } else if (selectedView === "room") {
+                            if (a.room_id !== selectedItemId) return false;
+                        }
+                        return true;
+                    });
+                    
+                    // Check if this timeslot/cell has any active conflict
+                    let cellConflicts = [];
+                    cellAssignments.forEach(a => {
+                        const matched = activeConflicts.filter(c => c.affected_ids.includes(a.id));
+                        cellConflicts.push(...matched);
+                    });
+                    
+                    // Also check if highlighted from Conflict Panel click
+                    const isHighlightedConflict = cellConflicts.some(c => highlightConflictIds.includes(c.details.load_entry_id || c.affected_ids[0]));
+                    
+                    if (cellConflicts.length > 0) {
+                        cellTd.classList.add("conflict-cell");
+                    }
+                    if (isHighlightedConflict) {
+                        cellTd.classList.add("ring-2", "ring-orange-500", "ring-offset-1");
+                    }
+
+                    // Render assignments inside cell
+                    if (cellAssignments.length > 0) {
+                        cellAssignments.forEach(a => {
+                            const wrapper = document.createElement("div");
+                            wrapper.className = "bg-white p-1.5 rounded border border-gray-200 shadow-sm space-y-1 mb-1 relative";
+                            
+                            const sub = allSubjects.find(s => s.id === a.subject_id);
+                            const fac = allFaculty.find(f => f.id === a.faculty_id);
+                            
+                            const label = a.batch_id ? `<span class="bg-orange-100 text-orange-800 text-[10px] px-1 rounded font-bold mr-1">${a.batch_id.split('_').pop()}</span>` : "";
+                            
+                            wrapper.innerHTML = `
+                                <div class="font-bold text-gray-900">${label}${sub ? sub.code : a.subject_id}</div>
+                                <div class="text-gray-500">${fac ? fac.full_name : a.faculty_id}</div>
+                                <div class="text-gray-400 font-semibold">${a.room_id}</div>
+                            `;
+                            
+                            if (userRole === "admin") {
+                                wrapper.addEventListener("click", (e) => {
+                                    e.stopPropagation();
+                                    openAssignmentModal(a);
+                                });
+                            }
+                            cellTd.appendChild(wrapper);
+                        });
+                    } else {
+                        // Empty cell click opens add modal for admins
+                        if (userRole === "admin") {
+                            cellTd.addEventListener("click", () => {
+                                openAssignmentModal(null, day, p);
+                            });
+                        }
+                    }
+                    
+                    // Render small badge if conflicts exist
+                    if (cellConflicts.length > 0) {
+                        const badge = document.createElement("span");
+                        badge.className = "absolute top-1 right-1 text-red-500 text-xs";
+                        badge.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i>`;
+                        cellTd.appendChild(badge);
+                    }
+                    
+                    tr.appendChild(cellTd);
+                }
+                
+                body.appendChild(tr);
+            });
+        }
+
+        // 6. Conflicts Renderer
+        function renderConflicts(data) {
+            const list = document.getElementById("conflict-list");
+            list.innerHTML = "";
+            
+            const badge = document.getElementById("conflict-badge");
+            if (data.summary.total === 0) {
+                badge.className = "bg-green-100 text-green-800 text-xs px-2.5 py-0.5 rounded-full font-semibold";
+                badge.innerText = "No Conflicts";
+                list.innerHTML = `<div class="text-gray-500 text-center py-8"><i class="fa-solid fa-circle-check text-green-500 text-2xl mb-2"></i><br>Timetable is fully valid!</div>`;
+                return;
+            }
+            
+            badge.className = "bg-red-100 text-red-800 text-xs px-2.5 py-0.5 rounded-full font-semibold animate-pulse";
+            badge.innerText = `${data.summary.total} Issues`;
+            
+            data.conflicts.forEach(c => {
+                const item = document.createElement("div");
+                const borderClass = c.severity === "error" ? "border-red-200 bg-red-50/50" : "border-amber-200 bg-amber-50/30";
+                const iconClass = c.severity === "error" ? "text-red-600 fa-circle-xmark" : "text-amber-600 fa-triangle-exclamation";
+                
+                item.className = `p-3 rounded-lg border ${borderClass} flex gap-2 cursor-pointer transition hover:shadow-sm`;
+                
+                item.innerHTML = `
+                    <div class="mt-0.5"><i class="fa-solid ${iconClass}"></i></div>
+                    <div class="flex-grow">
+                        <div class="font-semibold text-gray-900 capitalize text-xs">${c.type.replace(/_/g, ' ')}</div>
+                        <div class="text-gray-600 text-xs mt-1 leading-normal">${c.message}</div>
+                    </div>
+                `;
+                
+                // Clicking conflict highlights it on the grid
+                item.addEventListener("click", () => {
+                    const uniqueId = c.details.load_entry_id || c.affected_ids[0];
+                    if (highlightConflictIds.includes(uniqueId)) {
+                        highlightConflictIds = [];
+                    } else {
+                        highlightConflictIds = [uniqueId];
+                        
+                        // Auto navigate grid filter to matching view if applicable
+                        if (c.details.faculty_id && selectedView === "faculty") {
+                            document.getElementById("view-item-select").value = c.details.faculty_id;
+                            selectedItemId = c.details.faculty_id;
+                        } else if (c.details.room_id && selectedView === "room") {
+                            document.getElementById("view-item-select").value = c.details.room_id;
+                            selectedItemId = c.details.room_id;
+                        } else if (c.details.section_id && selectedView === "section") {
+                            document.getElementById("view-item-select").value = c.details.section_id;
+                            selectedItemId = c.details.section_id;
+                        }
+                    }
+                    renderGrid();
+                });
+                
+                list.appendChild(item);
+            });
+        }
+
+        // 7. Manual Entry Modal functions
+        function openAssignmentModal(assign = null, defDay = "Monday", defPeriod = 1) {
+            document.getElementById("modal-title").innerText = assign ? "Edit Timetable Assignment" : "Add Timetable Assignment";
+            
+            // Populate form options
+            const facSelect = document.getElementById("form-faculty");
+            facSelect.innerHTML = "";
+            allFaculty.forEach(f => {
+                const opt = document.createElement("option");
+                opt.value = f.id;
+                opt.innerText = `${f.full_name} (${f.known_initials || f.id})`;
+                facSelect.appendChild(opt);
+            });
+            
+            const subSelect = document.getElementById("form-subject");
+            subSelect.innerHTML = "";
+            allSubjects.forEach(s => {
+                const opt = document.createElement("option");
+                opt.value = s.id;
+                opt.innerText = `${s.name} (${s.code})`;
+                subSelect.appendChild(opt);
+            });
+            
+            const roomSelect = document.getElementById("form-room");
+            roomSelect.innerHTML = "";
+            allRooms.forEach(r => {
+                const opt = document.createElement("option");
+                opt.value = r.id;
+                opt.innerText = `${r.name} (${r.type})`;
+                roomSelect.appendChild(opt);
+            });
+            
+            const secSelect = document.getElementById("form-section");
+            secSelect.innerHTML = `<option value="">None</option>`;
+            allSections.forEach(s => {
+                const opt = document.createElement("option");
+                opt.value = s.id;
+                opt.innerText = s.name;
+                secSelect.appendChild(opt);
+            });
+            
+            if (assign) {
+                document.getElementById("edit-assignment-id").value = assign.id;
+                document.getElementById("form-faculty").value = assign.faculty_id;
+                document.getElementById("form-subject").value = assign.subject_id;
+                document.getElementById("form-section").value = assign.section_id || "";
+                document.getElementById("form-batch").value = assign.batch_id ? assign.batch_id.split('_').pop() : "";
+                document.getElementById("form-room").value = assign.room_id;
+                
+                const parts = assign.timeslot_id.split("_");
+                document.getElementById("form-day").value = parts[0];
+                document.getElementById("form-period").value = parts[1];
+                document.getElementById("form-effective-from").value = assign.effective_from;
+                document.getElementById("form-effective-to").value = assign.effective_to || "";
+                
+                document.getElementById("delete-assignment-btn").classList.remove("hidden");
+                document.getElementById("delete-assignment-btn").onclick = () => handleDeleteAssignment(assign.id);
+            } else {
+                document.getElementById("edit-assignment-id").value = "";
+                document.getElementById("form-faculty").selectedIndex = 0;
+                document.getElementById("form-subject").selectedIndex = 0;
+                document.getElementById("form-section").value = selectedView === "section" ? selectedItemId : "";
+                document.getElementById("form-batch").value = "";
+                document.getElementById("form-room").value = selectedView === "room" ? selectedItemId : allRooms[0]?.id || "";
+                document.getElementById("form-day").value = defDay;
+                document.getElementById("form-period").value = defPeriod;
+                document.getElementById("form-effective-from").value = "2026-08-30";
+                document.getElementById("form-effective-to").value = "";
+                
+                document.getElementById("delete-assignment-btn").classList.add("hidden");
+            }
+            
+            document.getElementById("assignment-modal").classList.remove("hidden");
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add("hidden");
+        }
+
+        async function handleSaveAssignment(e) {
+            e.preventDefault();
+            
+            const editId = document.getElementById("edit-assignment-id").value;
+            const secId = document.getElementById("form-section").value;
+            const batchVal = document.getElementById("form-batch").value;
+            
+            const payload = {
+                faculty_id: document.getElementById("form-faculty").value,
+                subject_id: document.getElementById("form-subject").value,
+                section_id: secId || null,
+                batch_id: (secId && batchVal) ? `${secId}_${batchVal}` : null,
+                room_id: document.getElementById("form-room").value,
+                timeslot_id: `${document.getElementById("form-day").value}_${document.getElementById("form-period").value}`,
+                effective_from: document.getElementById("form-effective-from").value,
+                effective_to: document.getElementById("form-effective-to").value || null
+            };
+            
+            const method = editId ? "PUT" : "POST";
+            const url = editId ? `${API_URL}/api/assignments/${editId}` : `${API_URL}/api/assignments`;
+            
+            try {
+                const res = await fetch(url, {
+                    method: method,
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || "Failed to save assignment");
+                }
+                
+                closeModal("assignment-modal");
+                await fetchAllData();
+                fetchConflicts();
+            } catch (err) {
+                alert(err.message);
+            }
+        }
+
+        async function handleDeleteAssignment(id) {
+            if (!confirm("Are you sure you want to delete this assignment?")) return;
+            
+            try {
+                const res = await fetch(`${API_URL}/api/assignments/${id}`, {
+                    method: "DELETE",
+                    headers: getAuthHeaders()
+                });
+                
+                if (!res.ok) throw new Error("Delete failed");
+                
+                closeModal("assignment-modal");
+                await fetchAllData();
+                fetchConflicts();
+            } catch (err) {
+                alert(err.message);
+            }
+        }
+
+        // 8. CSV Bulk Import functions
+        function openCSVModal() {
+            document.getElementById("csv-file-input").value = "";
+            document.getElementById("csv-preview-panel").classList.add("hidden");
+            document.getElementById("csv-errors-alert").classList.add("hidden");
+            closeModal("assignment-modal");
+            document.getElementById("csv-modal").classList.remove("hidden");
+        }
+
+        let csvParsedData = null; // Temp holder for preview response
+
+        async function handleCSVPreview() {
+            const fileInput = document.getElementById("csv-file-input");
+            const type = document.getElementById("csv-type").value;
+            
+            if (fileInput.files.length === 0) {
+                alert("Please select a CSV file first.");
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append("file", fileInput.files[0]);
+            formData.append("type", type);
+            
+            try {
+                const res = await fetch(`${API_URL}/api/csv/preview`, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${userToken}`
+                    },
+                    body: formData
+                });
+                
+                if (!res.ok) throw new Error("Failed to parse CSV preview");
+                
+                const data = await res.json();
+                csvParsedData = data;
+                renderCSVPreview(data);
+            } catch (err) {
+                alert(err.message);
+            }
+        }
+
+        function renderCSVPreview(data) {
+            const tableHeaders = document.getElementById("csv-table-headers");
+            const tableBody = document.getElementById("csv-table-body");
+            const errorsAlert = document.getElementById("csv-errors-alert");
+            const summaryText = document.getElementById("csv-summary-text");
+            
+            tableHeaders.innerHTML = "";
+            tableBody.innerHTML = "";
+            errorsAlert.innerHTML = "";
+            errorsAlert.classList.add("hidden");
+            
+            // Show errors if any
+            if (data.error_count > 0) {
+                errorsAlert.classList.remove("hidden");
+                data.errors.forEach(err => {
+                    const d = document.createElement("div");
+                    d.innerText = err;
+                    errorsAlert.appendChild(d);
+                });
+            }
+            
+            if (data.preview.length === 0) {
+                summaryText.innerText = "No valid data found.";
+                document.getElementById("csv-commit-btn").disabled = true;
+                document.getElementById("csv-preview-panel").classList.remove("hidden");
+                return;
+            }
+            
+            // Build Table headers
+            const cols = Object.keys(data.preview[0]);
+            cols.forEach(col => {
+                const th = document.createElement("th");
+                th.className = "px-4 py-2 text-left font-semibold text-gray-700";
+                th.innerText = col;
+                tableHeaders.appendChild(th);
+            });
+            
+            // Build Table body
+            data.preview.forEach(row => {
+                const tr = document.createElement("tr");
+                tr.className = "hover:bg-gray-50 border-b border-gray-100";
+                cols.forEach(col => {
+                    const td = document.createElement("td");
+                    td.className = "px-4 py-2";
+                    td.innerText = row[col] || "";
+                    tr.appendChild(td);
+                });
+                tableBody.appendChild(tr);
+            });
+            
+            summaryText.innerText = `Found ${data.valid_count} valid records. Click commit to import.`;
+            document.getElementById("csv-commit-btn").disabled = (data.valid_count === 0);
+            
+            document.getElementById("csv-preview-panel").classList.remove("hidden");
+        }
+
+        async function handleCSVCommit() {
+            if (!csvParsedData || csvParsedData.valid_count === 0) return;
+            
+            try {
+                const res = await fetch(`${API_URL}/api/csv/commit`, {
+                    method: "POST",
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        type: csvParsedData.type,
+                        records: csvParsedData.preview // Send previewed valid records
+                    })
+                });
+                
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || "Failed to commit import");
+                }
+                
+                alert(`Successfully imported records!`);
+                closeModal("csv-modal");
+                await fetchAllData();
+                fetchConflicts();
+            } catch (err) {
+                alert(err.message);
+            }
+        }
+
+        // 9. Seeding Trigger handler
+        async function handleLegacySeeding() {
+            if (!confirm("Are you sure you want to seed legacy spreadsheet files? This will clear all existing custom timetables!")) return;
+            
+            const btn = document.getElementById("seed-btn");
+            const btnText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `<span><i class="fa-solid fa-spinner animate-spin mr-2"></i> Seeding database...</span>`;
+            
+            try {
+                const res = await fetch(`${API_URL}/api/admin/seed-legacy`, {
+                    method: "POST",
+                    headers: getAuthHeaders()
+                });
+                
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || "Legacy seeding failed");
+                }
+                
+                const data = await res.json();
+                alert(`Seeded database with ${data.count} assignments!`);
+                
+                await fetchAllData();
+                fetchConflicts();
+            } catch (err) {
+                alert(err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = btnText;
+            }
+        }
+    </script>
+</body>
+</html>
