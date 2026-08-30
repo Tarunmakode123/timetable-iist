@@ -562,7 +562,7 @@ from fastapi.responses import FileResponse
 async def serve_frontend(full_path: str = ""):
     if full_path.startswith("api"):
         raise HTTPException(status_code=404, detail="API route not found")
-    index_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "index.html")
+    index_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "public", "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path)
     return {"message": "index.html not found"}
