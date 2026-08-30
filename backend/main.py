@@ -22,21 +22,41 @@ SECRET_KEY = b"timetable-assistant-secret-key-12345"
 
 app = FastAPI(title="Timetable Assistant API")
 
-# Ensure database tables exist and admin user is seeded on startup (essential for Vercel)
-init_db()
-db_init = SessionLocal()
+import traceback
+
+IMPORT_ERROR = None
 try:
-    admin_exists = db_init.query(User).filter(User.username == "admin").first()
-    if not admin_exists:
-        admin = User(
-            username="admin",
-            hashed_password=hash_password("admin123"),
-            role="admin"
-        )
-        db_init.add(admin)
-        db_init.commit()
-finally:
-    db_init.close()
+    # Ensure database tables exist and admin user is seeded on startup (essential for Vercel)
+    init_db()
+    db_init = SessionLocal()
+    try:
+        admin_exists = db_init.query(User).filter(User.username == "admin").first()
+        if not admin_exists:
+            admin = User(
+                username="admin",
+                hashed_password=hash_password("admin123"),
+                role="admin"
+            )
+            db_init.add(admin)
+            db_init.commit()
+    finally:
+        db_init.close()
+except Exception as e:
+    IMPORT_ERROR = traceback.format_exc()
+
+@app.get("/api/debug")
+def get_debug_info():
+    import sys
+    from backend.database import DB_PATH, ORIG_DB_PATH
+    return {
+        "import_error": IMPORT_ERROR,
+        "sys_path": sys.path,
+        "db_path": DB_PATH,
+        "orig_db_path": ORIG_DB_PATH,
+        "db_exists": os.path.exists(DB_PATH) if 'DB_PATH' in locals() or 'DB_PATH' in globals() else False,
+        "orig_db_exists": os.path.exists(ORIG_DB_PATH) if 'ORIG_DB_PATH' in locals() or 'ORIG_DB_PATH' in globals() else False,
+        "cwd": os.getcwd()
+    }
 
 # Setup CORS middleware
 app.add_middleware(
