@@ -3,7 +3,19 @@ import hashlib
 from sqlalchemy import create_engine, Column, String, Integer, Float, ForeignKey, DateTime
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "timetable.db")
+import shutil
+
+ORIG_DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "timetable.db")
+if os.environ.get("VERCEL"):
+    DB_PATH = "/tmp/timetable.db"
+    if not os.path.exists(DB_PATH) and os.path.exists(ORIG_DB_PATH):
+        try:
+            shutil.copy(ORIG_DB_PATH, DB_PATH)
+        except Exception as e:
+            print(f"Error copying DB: {e}")
+else:
+    DB_PATH = ORIG_DB_PATH
+
 DATABASE_URL = f"sqlite:///{DB_PATH}"
 
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
