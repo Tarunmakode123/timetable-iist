@@ -3,7 +3,7 @@ import os
 import re
 from datetime import datetime
 from sqlalchemy.orm import Session
-from .database import (
+from backend.database import (
     Faculty, Subject, Section, Batch, Room, TimeSlot, Assignment, LoadDistribution, User, hash_password
 )
 
@@ -786,7 +786,7 @@ def seed_legacy_data(db: Session, excel_files: dict):
     return seeded_count
 
 if __name__ == "__main__":
-    from .database import SessionLocal, init_db
+    from backend.database import SessionLocal, init_db
     init_db()
     db = SessionLocal()
     files = {

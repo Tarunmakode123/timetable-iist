@@ -11,11 +11,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
-from .database import (
+from backend.database import (
     SessionLocal, init_db, Faculty, Subject, Section, Batch, Room, TimeSlot, Assignment, LoadDistribution, User, hash_password
 )
-from .validator import validate_all
-from .parser import seed_legacy_data
+from backend.validator import validate_all
+from backend.parser import seed_legacy_data
 
 # Secret key for signature token auth
 SECRET_KEY = b"timetable-assistant-secret-key-12345"

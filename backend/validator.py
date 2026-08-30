@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from .database import Assignment, Faculty, Subject, Room, TimeSlot, Section, Batch, LoadDistribution
+from backend.database import Assignment, Faculty, Subject, Room, TimeSlot, Section, Batch, LoadDistribution
 from datetime import datetime
 
 def parse_date(date_str):
