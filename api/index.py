@@ -2,8 +2,13 @@ import os
 import sys
 import traceback
 
-# Add the project root directory to sys.path so Vercel can locate the backend package
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+cwd = os.getcwd()
+
+for p in [current_dir, parent_dir, cwd]:
+    if p not in sys.path:
+        sys.path.insert(0, p)
 
 try:
     from backend.main import app
