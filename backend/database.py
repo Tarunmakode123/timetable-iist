@@ -3,6 +3,8 @@ import hashlib
 from sqlalchemy import create_engine, Column, String, Integer, Float, ForeignKey, DateTime
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 
+from sqlalchemy.pool import NullPool
+
 import shutil
 
 # Search multiple potential paths for the bundled timetable.db file (essential for Vercel packaging)
@@ -27,6 +29,7 @@ if os.environ.get("VERCEL"):
     DB_PATH = "/tmp/timetable.db"
     if not os.path.exists(DB_PATH) and os.path.exists(ORIG_DB_PATH):
         try:
+            os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
             shutil.copy(ORIG_DB_PATH, DB_PATH)
         except Exception as e:
             print(f"Error copying DB to /tmp: {e}")
@@ -35,7 +38,7 @@ else:
 
 DATABASE_URL = f"sqlite:///{DB_PATH}"
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False}, poolclass=NullPool)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
