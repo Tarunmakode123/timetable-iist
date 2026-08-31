@@ -16,6 +16,8 @@ from backend.database import (
 )
 from backend.validator import validate_all
 from backend.parser import seed_legacy_data
+from backend.solver import solve_timetable
+from backend.ai_assistant import process_ai_request
 
 # Secret key for signature token auth
 SECRET_KEY = b"timetable-assistant-secret-key-12345"
@@ -45,6 +47,7 @@ except Exception as e:
     IMPORT_ERROR = traceback.format_exc()
 
 @app.get("/api/debug")
+@app.get("/debug")
 def get_debug_info():
     import sys
     from backend.database import DB_PATH, ORIG_DB_PATH
@@ -81,7 +84,7 @@ def create_token(username: str, role: str) -> str:
     sig = hmac.new(SECRET_KEY, payload.encode(), hashlib.sha256).hexdigest()
     return f"{payload}:{sig}"
 
-def verify_token(token: str):
+def verify_token(token: str) -> Optional[dict]:
     try:
         parts = token.split(":")
         if len(parts) != 3:
@@ -91,36 +94,39 @@ def verify_token(token: str):
         if hmac.compare_digest(sig, expected_sig):
             return {"username": username, "role": role}
     except Exception:
-        pass
+        return None
     return None
 
-# Dependency to get current user from Authorization header
-def get_current_user(authorization: Optional[str] = Header(None), db: Session = Depends(get_db)):
-    if not authorization:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authorization header missing")
-    
-    try:
-        token_type, token = authorization.split(" ")
-        if token_type.lower() != "bearer":
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type")
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authorization header format")
-        
-    user_payload = verify_token(token)
-    if not user_payload:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
-        
-    user = db.query(User).filter(User.username == user_payload["username"]).first()
+def get_current_user(authorization: Optional[str] = Header(None), db: Session = Depends(get_db)) -> User:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing or invalid Authorization header"
+        )
+    token = authorization.split(" ")[1]
+    payload = verify_token(token)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid signature session token"
+        )
+    user = db.query(User).filter(User.username == payload["username"]).first()
     if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User no longer exists"
+        )
     return user
 
 def require_admin(current_user: User = Depends(get_current_user)):
     if current_user.role != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin permissions required")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required"
+        )
     return current_user
 
-# Pydantic Schemas
+# Pydantic Request Models
 class LoginRequest(BaseModel):
     username: str
     password: str
@@ -128,7 +134,7 @@ class LoginRequest(BaseModel):
 class RegisterRequest(BaseModel):
     username: str
     password: str
-    role: str # 'admin' or 'faculty'
+    role: str = "faculty" # 'admin' or 'faculty'
     faculty_id: Optional[str] = None
 
 class AssignmentCreate(BaseModel):
@@ -171,6 +177,7 @@ class SectionCreate(BaseModel):
 # ----------------- Auth Routes -----------------
 
 @app.post("/api/auth/register")
+@app.post("/auth/register")
 def register(req: RegisterRequest, db: Session = Depends(get_db)):
     user_exists = db.query(User).filter(User.username == req.username).first()
     if user_exists:
@@ -187,6 +194,7 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
     return {"message": "User registered successfully"}
 
 @app.post("/api/auth/login")
+@app.post("/auth/login")
 def login(req: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == req.username).first()
     if not user or user.hashed_password != hash_password(req.password):
@@ -201,6 +209,7 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
     }
 
 @app.get("/api/auth/me")
+@app.get("/auth/me")
 def get_me(user: User = Depends(get_current_user)):
     return {
         "username": user.username,
@@ -211,6 +220,7 @@ def get_me(user: User = Depends(get_current_user)):
 # ----------------- Seed & DB init -----------------
 
 @app.post("/api/admin/seed-legacy", dependencies=[Depends(require_admin)])
+@app.post("/admin/seed-legacy", dependencies=[Depends(require_admin)])
 def trigger_legacy_seeding(db: Session = Depends(get_db)):
     files = {
         "II Year_TT": r"C:\Users\tarun\Downloads\II Year_TT_July-Dec 24.xlsx",
@@ -237,6 +247,7 @@ def trigger_legacy_seeding(db: Session = Depends(get_db)):
 # ----------------- Validation Route -----------------
 
 @app.get("/api/conflicts")
+@app.get("/conflicts")
 def get_conflicts(db: Session = Depends(get_db)):
     conflicts = validate_all(db)
     return {
@@ -252,10 +263,12 @@ def get_conflicts(db: Session = Depends(get_db)):
 
 # 1. Faculty
 @app.get("/api/faculty")
+@app.get("/faculty")
 def get_faculty(db: Session = Depends(get_db)):
     return db.query(Faculty).all()
 
 @app.post("/api/faculty", dependencies=[Depends(require_admin)])
+@app.post("/faculty", dependencies=[Depends(require_admin)])
 def create_faculty(req: FacultyCreate, db: Session = Depends(get_db)):
     if db.query(Faculty).filter(Faculty.id == req.id).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Faculty ID already exists")
@@ -265,6 +278,7 @@ def create_faculty(req: FacultyCreate, db: Session = Depends(get_db)):
     return fac
 
 @app.put("/api/faculty/{fac_id}", dependencies=[Depends(require_admin)])
+@app.put("/faculty/{fac_id}", dependencies=[Depends(require_admin)])
 def update_faculty(fac_id: str, req: FacultyCreate, db: Session = Depends(get_db)):
     fac = db.query(Faculty).filter(Faculty.id == fac_id).first()
     if not fac:
@@ -275,6 +289,7 @@ def update_faculty(fac_id: str, req: FacultyCreate, db: Session = Depends(get_db
     return fac
 
 @app.delete("/api/faculty/{fac_id}", dependencies=[Depends(require_admin)])
+@app.delete("/faculty/{fac_id}", dependencies=[Depends(require_admin)])
 def delete_faculty(fac_id: str, db: Session = Depends(get_db)):
     fac = db.query(Faculty).filter(Faculty.id == fac_id).first()
     if not fac:
@@ -285,10 +300,12 @@ def delete_faculty(fac_id: str, db: Session = Depends(get_db)):
 
 # 2. Subjects
 @app.get("/api/subjects")
+@app.get("/subjects")
 def get_subjects(db: Session = Depends(get_db)):
     return db.query(Subject).all()
 
 @app.post("/api/subjects", dependencies=[Depends(require_admin)])
+@app.post("/subjects", dependencies=[Depends(require_admin)])
 def create_subject(req: SubjectCreate, db: Session = Depends(get_db)):
     if db.query(Subject).filter(Subject.id == req.id).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Subject ID already exists")
@@ -298,6 +315,7 @@ def create_subject(req: SubjectCreate, db: Session = Depends(get_db)):
     return sub
 
 @app.put("/api/subjects/{sub_id}", dependencies=[Depends(require_admin)])
+@app.put("/subjects/{sub_id}", dependencies=[Depends(require_admin)])
 def update_subject(sub_id: str, req: SubjectCreate, db: Session = Depends(get_db)):
     sub = db.query(Subject).filter(Subject.id == sub_id).first()
     if not sub:
@@ -308,6 +326,7 @@ def update_subject(sub_id: str, req: SubjectCreate, db: Session = Depends(get_db
     return sub
 
 @app.delete("/api/subjects/{sub_id}", dependencies=[Depends(require_admin)])
+@app.delete("/subjects/{sub_id}", dependencies=[Depends(require_admin)])
 def delete_subject(sub_id: str, db: Session = Depends(get_db)):
     sub = db.query(Subject).filter(Subject.id == sub_id).first()
     if not sub:
@@ -318,10 +337,12 @@ def delete_subject(sub_id: str, db: Session = Depends(get_db)):
 
 # 3. Rooms
 @app.get("/api/rooms")
+@app.get("/rooms")
 def get_rooms(db: Session = Depends(get_db)):
     return db.query(Room).all()
 
 @app.post("/api/rooms", dependencies=[Depends(require_admin)])
+@app.post("/rooms", dependencies=[Depends(require_admin)])
 def create_room(req: RoomCreate, db: Session = Depends(get_db)):
     if db.query(Room).filter(Room.id == req.id).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Room ID already exists")
@@ -331,6 +352,7 @@ def create_room(req: RoomCreate, db: Session = Depends(get_db)):
     return room
 
 @app.put("/api/rooms/{room_id}", dependencies=[Depends(require_admin)])
+@app.put("/rooms/{room_id}", dependencies=[Depends(require_admin)])
 def update_room(room_id: str, req: RoomCreate, db: Session = Depends(get_db)):
     room = db.query(Room).filter(Room.id == room_id).first()
     if not room:
@@ -341,6 +363,7 @@ def update_room(room_id: str, req: RoomCreate, db: Session = Depends(get_db)):
     return room
 
 @app.delete("/api/rooms/{room_id}", dependencies=[Depends(require_admin)])
+@app.delete("/rooms/{room_id}", dependencies=[Depends(require_admin)])
 def delete_room(room_id: str, db: Session = Depends(get_db)):
     room = db.query(Room).filter(Room.id == room_id).first()
     if not room:
@@ -351,6 +374,7 @@ def delete_room(room_id: str, db: Session = Depends(get_db)):
 
 # 4. Sections & Batches
 @app.get("/api/sections")
+@app.get("/sections")
 def get_sections(db: Session = Depends(get_db)):
     res = []
     for s in db.query(Section).all():
@@ -365,6 +389,7 @@ def get_sections(db: Session = Depends(get_db)):
     return res
 
 @app.post("/api/sections", dependencies=[Depends(require_admin)])
+@app.post("/sections", dependencies=[Depends(require_admin)])
 def create_section(req: SectionCreate, db: Session = Depends(get_db)):
     if db.query(Section).filter(Section.id == req.id).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Section ID already exists")
@@ -380,6 +405,7 @@ def create_section(req: SectionCreate, db: Session = Depends(get_db)):
     return sec
 
 @app.delete("/api/sections/{sec_id}", dependencies=[Depends(require_admin)])
+@app.delete("/sections/{sec_id}", dependencies=[Depends(require_admin)])
 def delete_section(sec_id: str, db: Session = Depends(get_db)):
     sec = db.query(Section).filter(Section.id == sec_id).first()
     if not sec:
@@ -391,10 +417,12 @@ def delete_section(sec_id: str, db: Session = Depends(get_db)):
 
 # 5. Assignments
 @app.get("/api/assignments")
+@app.get("/assignments")
 def get_assignments(db: Session = Depends(get_db)):
     return db.query(Assignment).all()
 
 @app.post("/api/assignments", dependencies=[Depends(require_admin)])
+@app.post("/assignments", dependencies=[Depends(require_admin)])
 def create_assignment(req: AssignmentCreate, db: Session = Depends(get_db)):
     # Validate timeslot
     if not db.query(TimeSlot).filter(TimeSlot.id == req.timeslot_id).first():
@@ -417,6 +445,7 @@ def create_assignment(req: AssignmentCreate, db: Session = Depends(get_db)):
     return assign
 
 @app.put("/api/assignments/{assign_id}", dependencies=[Depends(require_admin)])
+@app.put("/assignments/{assign_id}", dependencies=[Depends(require_admin)])
 def update_assignment(assign_id: int, req: AssignmentCreate, db: Session = Depends(get_db)):
     assign = db.query(Assignment).filter(Assignment.id == assign_id).first()
     if not assign:
@@ -428,6 +457,7 @@ def update_assignment(assign_id: int, req: AssignmentCreate, db: Session = Depen
     return assign
 
 @app.delete("/api/assignments/{assign_id}", dependencies=[Depends(require_admin)])
+@app.delete("/assignments/{assign_id}", dependencies=[Depends(require_admin)])
 def delete_assignment(assign_id: int, db: Session = Depends(get_db)):
     assign = db.query(Assignment).filter(Assignment.id == assign_id).first()
     if not assign:
@@ -439,6 +469,7 @@ def delete_assignment(assign_id: int, db: Session = Depends(get_db)):
 # ----------------- CSV Import/Preview/Commit -----------------
 
 @app.post("/api/csv/preview", dependencies=[Depends(require_admin)])
+@app.post("/csv/preview", dependencies=[Depends(require_admin)])
 async def upload_csv_preview(file: UploadFile = File(...), csv_type: str = Form(..., alias="type")):
     content = await file.read()
     decoded = content.decode('utf-8')
@@ -524,6 +555,7 @@ async def upload_csv_preview(file: UploadFile = File(...), csv_type: str = Form(
     }
 
 @app.post("/api/csv/commit", dependencies=[Depends(require_admin)])
+@app.post("/csv/commit", dependencies=[Depends(require_admin)])
 def commit_csv_import(req: dict, db: Session = Depends(get_db)):
     type = req.get("type")
     records = req.get("records", [])
@@ -588,8 +620,72 @@ def commit_csv_import(req: dict, db: Session = Depends(get_db)):
 # ----------------- TimeSlots Route -----------------
 
 @app.get("/api/timeslots")
+@app.get("/timeslots")
 def get_timeslots(db: Session = Depends(get_db)):
     return db.query(TimeSlot).all()
+
+# ----------------- AI Assistant & Generation Routes -----------------
+
+@app.post("/api/ai/query")
+@app.post("/ai/query")
+def ai_query_handler(req: dict, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    prompt = req.get("prompt", "")
+    if not prompt:
+        raise HTTPException(status_code=400, detail="Prompt string is required")
+    return process_ai_request(prompt, db)
+
+@app.post("/api/ai/execute")
+@app.post("/ai/execute")
+def ai_execute_handler(req: dict, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    diff = req.get("diff")
+    if not diff:
+        raise HTTPException(status_code=400, detail="Missing diff definition")
+    
+    to_delete = diff.get("to_delete", [])
+    to_add = diff.get("to_add", [])
+    
+    if to_delete:
+        db.query(Assignment).filter(Assignment.id.in_(to_delete)).delete(synchronize_session=False)
+        
+    added_count = 0
+    if to_add:
+        for item in to_add:
+            assign = Assignment(
+                faculty_id=item["faculty_id"],
+                subject_id=item["subject_id"],
+                section_id=item.get("section_id"),
+                batch_id=item.get("batch_id"),
+                room_id=item["room_id"],
+                timeslot_id=item["timeslot_id"],
+                effective_from=item.get("effective_from", "2026-08-30"),
+                source=item.get("source", "ai_assistant")
+            )
+            db.add(assign)
+            added_count += 1
+            
+    db.commit()
+    return {"message": "AI changes executed successfully!", "deleted": len(to_delete), "added": added_count}
+
+@app.post("/api/ai/solve")
+@app.post("/ai/solve")
+def ai_solve_handler(req: dict = None, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if req is None:
+        req = {}
+    pinned = req.get("pinned_assignment_ids", [])
+    result = solve_timetable(db, pinned_assignment_ids=pinned)
+    
+    if result["status"] == "success":
+        # Replace non-pinned assignments with new generated set
+        if pinned:
+            db.query(Assignment).filter(Assignment.id.not_in(pinned)).delete(synchronize_session=False)
+        else:
+            db.query(Assignment).delete()
+            
+        for a_dict in result["assignments"]:
+            db.add(Assignment(**a_dict))
+        db.commit()
+        
+    return result
 
 from fastapi.responses import FileResponse
 

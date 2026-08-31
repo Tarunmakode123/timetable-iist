@@ -8,29 +8,36 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts (Inter) -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Google Fonts (Inter & IBM Plex Mono) -->
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f9fafb;
+            background-color: #FAF8F5;
         }
-        /* Custom Orange Pulse Animation for Conflict Cells */
+        .grid-cell-code {
+            font-family: 'IBM Plex Mono', monospace;
+        }
+        /* Custom Signature Orange Pulse Animation for Modified Cells */
         @keyframes orangePulse {
             0%, 100% {
-                background-color: rgba(249, 115, 22, 0.15);
-                border-color: rgba(249, 115, 22, 0.5);
-                box-shadow: 0 0 0 0px rgba(249, 115, 22, 0.4);
+                background-color: rgba(232, 89, 12, 0.15);
+                border-color: rgba(232, 89, 12, 0.5);
+                box-shadow: 0 0 0 0px rgba(232, 89, 12, 0.4);
             }
             50% {
-                background-color: rgba(249, 115, 22, 0.35);
-                border-color: rgba(249, 115, 22, 1);
-                box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.2);
+                background-color: rgba(232, 89, 12, 0.4);
+                border-color: rgba(232, 89, 12, 1);
+                box-shadow: 0 0 0 6px rgba(232, 89, 12, 0.25);
             }
         }
+        .pulse-cell {
+            animation: orangePulse 1.8s infinite ease-in-out;
+            border-width: 2px !important;
+        }
         .conflict-cell {
-            animation: orangePulse 2s infinite ease-in-out;
-            border-width: 2px;
+            background-color: #FEE4E2 !important;
+            border-color: #D92D20 !important;
         }
     </style>
 </head>
@@ -40,7 +47,7 @@
     <div id="login-screen" class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
         <div class="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-md border border-gray-100">
             <div>
-                <div class="flex justify-center text-orange-500 text-5xl mb-4">
+                <div class="flex justify-center text-orange-600 text-5xl mb-4">
                     <i class="fa-solid fa-calendar-days"></i>
                 </div>
                 <h2 class="text-center text-3xl font-extrabold text-gray-900">
@@ -77,7 +84,7 @@
         </div>
     </div>
 
-    <!-- MAIN DASHBOARD (Hidden initially) -->
+    <!-- MAIN DASHBOARD -->
     <div id="main-dashboard" class="hidden min-h-screen flex flex-col">
         <!-- Navigation Header -->
         <header class="bg-white border-b border-gray-200">
@@ -101,12 +108,12 @@
         </header>
 
         <!-- Main Body -->
-        <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col lg:flex-row gap-6">
-            <!-- Sidebar Panel: Controls & Conflicts -->
-            <div class="w-full lg:w-1/4 flex flex-col gap-6">
+        <main class="flex-grow max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col xl:flex-row gap-6">
+            <!-- Column 1: Sidebar Controls & Conflicts -->
+            <div class="w-full xl:w-1/5 flex flex-col gap-6">
                 <!-- Controls Card -->
-                <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-4">
-                    <h3 class="font-bold text-lg text-gray-900 border-b border-gray-100 pb-2">Schedule View</h3>
+                <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-200 space-y-4">
+                    <h3 class="font-bold text-base text-gray-900 border-b border-gray-100 pb-2">Schedule View</h3>
                     
                     <div>
                         <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">View Type</label>
@@ -126,15 +133,19 @@
 
                     <div class="admin-only pt-2 border-t border-gray-100 space-y-2">
                         <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Administrative Actions</label>
+                        <button id="auto-solve-btn" class="w-full bg-orange-600 text-white hover:bg-orange-700 px-4 py-2 rounded-md text-sm font-semibold transition text-left flex items-center justify-between shadow-sm">
+                            <span><i class="fa-solid fa-wand-magic-sparkles mr-2"></i> CP-SAT Auto-Generate</span>
+                            <i class="fa-solid fa-play text-xs"></i>
+                        </button>
                         <button id="seed-btn" class="w-full bg-orange-50 text-orange-700 hover:bg-orange-100 px-4 py-2 rounded-md text-sm font-medium transition text-left flex items-center justify-between">
                             <span><i class="fa-solid fa-database mr-2"></i> Seed Legacy Excel</span>
                             <i class="fa-solid fa-chevron-right text-xs"></i>
                         </button>
-                        <button id="add-assignment-btn" class="w-full bg-orange-600 text-white hover:bg-orange-700 px-4 py-2 rounded-md text-sm font-medium transition text-left flex items-center justify-between shadow-sm">
+                        <button id="add-assignment-btn" class="w-full bg-gray-800 text-white hover:bg-gray-900 px-4 py-2 rounded-md text-sm font-medium transition text-left flex items-center justify-between">
                             <span><i class="fa-solid fa-plus mr-2"></i> Add Manual Entry</span>
                             <i class="fa-solid fa-plus text-xs"></i>
                         </button>
-                        <button id="upload-csv-btn" class="w-full bg-gray-800 text-white hover:bg-gray-900 px-4 py-2 rounded-md text-sm font-medium transition text-left flex items-center justify-between">
+                        <button id="upload-csv-btn" class="w-full bg-gray-100 text-gray-800 hover:bg-gray-200 px-4 py-2 rounded-md text-sm font-medium transition text-left flex items-center justify-between">
                             <span><i class="fa-solid fa-file-csv mr-2"></i> Bulk CSV Import</span>
                             <i class="fa-solid fa-upload text-xs"></i>
                         </button>
@@ -142,27 +153,26 @@
                 </div>
 
                 <!-- Conflict Panel Card -->
-                <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex-grow flex flex-col min-h-[300px]">
+                <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-200 flex-grow flex flex-col min-h-[250px]">
                     <div class="flex items-center justify-between border-b border-gray-100 pb-2 mb-3">
-                        <h3 class="font-bold text-lg text-gray-900">Validation Panel</h3>
+                        <h3 class="font-bold text-base text-gray-900">Validation Panel</h3>
                         <span id="conflict-badge" class="bg-green-100 text-green-800 text-xs px-2.5 py-0.5 rounded-full font-semibold">No Conflicts</span>
                     </div>
 
-                    <div id="conflict-list" class="overflow-y-auto max-h-[450px] flex-grow space-y-3 pr-1 text-sm">
+                    <div id="conflict-list" class="overflow-y-auto max-h-[350px] flex-grow space-y-3 pr-1 text-sm">
                         <!-- Populated dynamically -->
                     </div>
                 </div>
             </div>
 
-            <!-- Main Content Area: Grid View -->
-            <div class="flex-grow bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col">
+            <!-- Column 2: Main Grid View -->
+            <div class="flex-grow xl:w-3/5 bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col">
                 <div class="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
                     <div>
                         <h2 id="grid-title" class="text-xl font-bold text-gray-900">CS-1 II Year Timetable</h2>
                         <p id="grid-subtitle" class="text-sm text-gray-500 mt-1">Select a filter type to display schedule details</p>
                     </div>
                     
-                    <!-- Date Version selector (for class-wise effective dates) -->
                     <div id="date-version-panel" class="hidden flex items-center space-x-2">
                         <span class="text-xs text-gray-500 font-semibold uppercase tracking-wider">Date Version:</span>
                         <select id="date-version-select" class="border border-gray-300 rounded-md px-2 py-1 text-sm bg-white focus:outline-none">
@@ -172,7 +182,6 @@
                     </div>
                 </div>
 
-                <!-- Weekly Grid Container -->
                 <div class="overflow-x-auto flex-grow">
                     <table class="min-w-full border-collapse border border-gray-200 text-center text-sm table-fixed">
                         <thead>
@@ -193,6 +202,45 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+
+            <!-- Column 3: Persistent AI Assistant Side Panel -->
+            <div class="w-full xl:w-1/5 bg-white p-5 rounded-lg shadow-sm border border-gray-200 flex flex-col h-[750px]">
+                <div class="flex items-center justify-between border-b border-gray-100 pb-3 mb-3">
+                    <div class="flex items-center space-x-2">
+                        <div class="text-orange-600 text-xl"><i class="fa-solid fa-robot"></i></div>
+                        <h3 class="font-bold text-base text-gray-900">AI Assistant</h3>
+                    </div>
+                    <span class="bg-orange-100 text-orange-800 text-[10px] font-bold px-2 py-0.5 rounded">ONLINE</span>
+                </div>
+
+                <!-- Chat History Area -->
+                <div id="ai-chat-history" class="flex-grow overflow-y-auto space-y-3 pr-1 text-xs mb-3">
+                    <div class="bg-orange-50 p-3 rounded-lg border border-orange-100 text-gray-700">
+                        👋 Hi! I am your Timetable AI Assistant. You can ask me schedule questions or describe a change (e.g. <i>"Move Dr. Neeraj's Monday P2 to Tuesday P3"</i>).
+                    </div>
+                </div>
+
+                <!-- Suggested Chips -->
+                <div class="space-y-1.5 border-t border-gray-100 pt-2 mb-3">
+                    <span class="text-[10px] font-semibold text-gray-400 uppercase">Suggested Prompts</span>
+                    <div class="flex flex-wrap gap-1">
+                        <button onclick="sendQuickPrompt('What is Ms. Vimmy\'s Tuesday schedule?')" class="bg-gray-100 hover:bg-orange-100 text-gray-700 hover:text-orange-800 text-[11px] px-2 py-1 rounded transition">
+                            📅 Vimmy's Tuesday Schedule
+                        </button>
+                        <button onclick="sendQuickPrompt('Move Dr. Neeraj\'s Monday P2 class to Tuesday P3')" class="bg-gray-100 hover:bg-orange-100 text-gray-700 hover:text-orange-800 text-[11px] px-2 py-1 rounded transition">
+                            🔄 Shift Monday P2 to Tuesday P3
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Input Form -->
+                <form id="ai-chat-form" class="flex gap-2">
+                    <input type="text" id="ai-input" placeholder="Ask AI or request a change..." required class="flex-grow border border-gray-300 rounded p-2 text-xs focus:ring-orange-500 focus:border-orange-500">
+                    <button type="submit" class="bg-orange-600 hover:bg-orange-700 text-white px-3 py-2 rounded text-xs font-semibold transition">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </form>
             </div>
         </main>
     </div>
@@ -316,21 +364,14 @@
             <div id="csv-preview-panel" class="hidden flex-grow flex flex-col min-h-[250px] overflow-hidden">
                 <h4 class="font-semibold text-sm text-gray-700 mb-2 border-b border-gray-100 pb-1">CSV File Preview (First 50 Rows)</h4>
                 
-                <!-- Errors alert -->
-                <div id="csv-errors-alert" class="hidden bg-red-50 border border-red-200 text-red-800 p-3 rounded text-sm mb-3 max-h-[100px] overflow-y-auto">
-                    <!-- Populated dynamically -->
-                </div>
+                <div id="csv-errors-alert" class="hidden bg-red-50 border border-red-200 text-red-800 p-3 rounded text-sm mb-3 max-h-[100px] overflow-y-auto"></div>
 
                 <div class="overflow-auto border border-gray-200 rounded flex-grow max-h-[300px]">
                     <table class="min-w-full text-xs text-left text-gray-500">
                         <thead class="bg-gray-50 text-gray-700 uppercase tracking-wider font-semibold border-b border-gray-200 sticky top-0">
-                            <tr id="csv-table-headers">
-                                <!-- Headers -->
-                            </tr>
+                            <tr id="csv-table-headers"></tr>
                         </thead>
-                        <tbody id="csv-table-body" class="bg-white divide-y divide-gray-100">
-                            <!-- Preview rows -->
-                        </tbody>
+                        <tbody id="csv-table-body" class="bg-white divide-y divide-gray-100"></tbody>
                     </table>
                 </div>
 
@@ -345,9 +386,9 @@
         </div>
     </div>
 
-    <!-- JAVASCRIPT STATE & LOGIC -->
+    <!-- JAVASCRIPT LOGIC -->
     <script>
-        const API_URL = ""; // Serve from same host
+        const API_URL = ""; 
         let userToken = localStorage.getItem("token") || "";
         let userRole = localStorage.getItem("role") || "";
         let userFacultyId = localStorage.getItem("faculty_id") || "";
@@ -359,28 +400,29 @@
         let allSections = [];
         let allTimeSlots = [];
         
-        let selectedView = "section"; // 'section', 'faculty', 'room'
+        let selectedView = "section"; 
         let selectedItemId = "";
         let selectedDateVersion = "2024-09-30";
         let activeConflicts = [];
-        let highlightConflictIds = []; // Conflict IDs currently selected to highlight
+        let highlightConflictIds = []; 
+        let modifiedCellTsIds = []; // Slots affected by latest AI action
 
-        // 1. Initial Page Load check
         window.addEventListener("DOMContentLoaded", () => {
             initApp();
             
-            // Event Listeners
             document.getElementById("login-form").addEventListener("submit", handleLogin);
             document.getElementById("logout-btn").addEventListener("click", handleLogout);
             document.getElementById("view-type-select").addEventListener("change", handleViewTypeChange);
             document.getElementById("view-item-select").addEventListener("change", handleViewItemChange);
             document.getElementById("date-version-select").addEventListener("change", handleDateVersionChange);
             document.getElementById("seed-btn").addEventListener("click", handleLegacySeeding);
+            document.getElementById("auto-solve-btn").addEventListener("click", handleAutoSolve);
             document.getElementById("add-assignment-btn").addEventListener("click", () => openAssignmentModal());
             document.getElementById("assignment-form").addEventListener("submit", handleSaveAssignment);
             document.getElementById("upload-csv-btn").addEventListener("click", () => openCSVModal());
             document.getElementById("csv-preview-btn").addEventListener("click", handleCSVPreview);
             document.getElementById("csv-commit-btn").addEventListener("click", handleCSVCommit);
+            document.getElementById("ai-chat-form").addEventListener("submit", handleAIChatSubmit);
         });
 
         function getAuthHeaders() {
@@ -399,12 +441,10 @@
             showView("main-dashboard");
             document.getElementById("user-display").innerHTML = `Logged in as: <span class="font-bold text-gray-800">${localStorage.getItem("username")}</span> (${userRole})`;
             
-            // Show/hide admin options
             if (userRole === "admin") {
                 document.querySelectorAll(".admin-only").forEach(el => el.classList.remove("hidden"));
             } else {
                 document.querySelectorAll(".admin-only").forEach(el => el.classList.add("hidden"));
-                // If faculty is logged in, default view type to faculty and item select to their faculty_id, and lock selections if needed.
                 if (userFacultyId) {
                     document.getElementById("view-type-select").value = "faculty";
                     document.getElementById("view-type-select").disabled = true;
@@ -423,7 +463,6 @@
             document.getElementById(viewId).classList.remove("hidden");
         }
 
-        // 2. Auth handlers
         async function handleLogin(e) {
             e.preventDefault();
             const usernameInput = document.getElementById("username").value;
@@ -480,7 +519,6 @@
             showView("login-screen");
         }
 
-        // 3. Data fetching
         async function fetchAllData() {
             try {
                 const [facRes, subRes, roomRes, secRes, tsRes, assignRes] = await Promise.all([
@@ -509,13 +547,12 @@
                 const data = await res.json();
                 activeConflicts = data.conflicts;
                 renderConflicts(data);
-                renderGrid(); // Redraw grid with conflicts highlighted
+                renderGrid(); 
             } catch (err) {
                 console.error("Error fetching conflicts", err);
             }
         }
 
-        // 4. View items population
         function populateViewItems() {
             const select = document.getElementById("view-item-select");
             select.innerHTML = "";
@@ -530,8 +567,6 @@
                 });
             } else if (selectedView === "faculty") {
                 document.getElementById("date-version-panel").classList.add("hidden");
-                
-                // If logged in faculty, restrict choices
                 if (userRole === "faculty" && userFacultyId) {
                     const matched = allFaculty.find(f => f.id === userFacultyId);
                     if (matched) {
@@ -558,7 +593,6 @@
                 });
             }
             
-            // Set first item as selected
             if (select.options.length > 0) {
                 selectedItemId = select.value;
             } else {
@@ -582,12 +616,10 @@
             renderGrid();
         }
 
-        // 5. Grid Rendering with pulsing animations for conflicts
         function renderGrid() {
             const body = document.getElementById("grid-body");
             body.innerHTML = "";
             
-            // Title updates
             const gridTitle = document.getElementById("grid-title");
             const select = document.getElementById("view-item-select");
             const activeText = select.options.length > 0 ? select.options[select.selectedIndex].text : "No Selection";
@@ -605,7 +637,6 @@
                 tr.appendChild(dayTd);
                 
                 for (let p = 1; p <= 8; p++) {
-                    // Lunch break column
                     if (p === 5) {
                         const lunchTd = document.createElement("td");
                         lunchTd.className = "border border-gray-200 bg-orange-50/20 text-orange-500 font-semibold text-xs uppercase italic";
@@ -618,19 +649,13 @@
                     
                     const tsId = `${day}_${p}`;
                     
-                    // Filter assignments for this specific view element & timeslot & date range
                     const cellAssignments = allAssignments.filter(a => {
                         if (a.timeslot_id !== tsId) return false;
-                        
-                        // If section view, check date versioning
                         if (selectedView === "section") {
                             if (a.section_id !== selectedItemId) return false;
-                            
-                            // Parse dates
                             const effFrom = new Date(a.effective_from);
                             const effTo = a.effective_to ? new Date(a.effective_to) : null;
                             const selDate = new Date(selectedDateVersion);
-                            
                             if (effFrom > selDate) return false;
                             if (effTo && effTo < selDate) return false;
                         } else if (selectedView === "faculty") {
@@ -641,16 +666,18 @@
                         return true;
                     });
                     
-                    // Check if this timeslot/cell has any active conflict
                     let cellConflicts = [];
                     cellAssignments.forEach(a => {
                         const matched = activeConflicts.filter(c => c.affected_ids.includes(a.id));
                         cellConflicts.push(...matched);
                     });
                     
-                    // Also check if highlighted from Conflict Panel click
                     const isHighlightedConflict = cellConflicts.some(c => highlightConflictIds.includes(c.details.load_entry_id || c.affected_ids[0]));
                     
+                    // Signature pulse animation for modified cells
+                    if (modifiedCellTsIds.includes(tsId)) {
+                        cellTd.classList.add("pulse-cell");
+                    }
                     if (cellConflicts.length > 0) {
                         cellTd.classList.add("conflict-cell");
                     }
@@ -658,7 +685,6 @@
                         cellTd.classList.add("ring-2", "ring-orange-500", "ring-offset-1");
                     }
 
-                    // Render assignments inside cell
                     if (cellAssignments.length > 0) {
                         cellAssignments.forEach(a => {
                             const wrapper = document.createElement("div");
@@ -670,9 +696,9 @@
                             const label = a.batch_id ? `<span class="bg-orange-100 text-orange-800 text-[10px] px-1 rounded font-bold mr-1">${a.batch_id.split('_').pop()}</span>` : "";
                             
                             wrapper.innerHTML = `
-                                <div class="font-bold text-gray-900">${label}${sub ? sub.code : a.subject_id}</div>
+                                <div class="font-bold text-gray-900 grid-cell-code">${label}${sub ? sub.code : a.subject_id}</div>
                                 <div class="text-gray-500">${fac ? fac.full_name : a.faculty_id}</div>
-                                <div class="text-gray-400 font-semibold">${a.room_id}</div>
+                                <div class="text-gray-400 font-semibold grid-cell-code">${a.room_id}</div>
                             `;
                             
                             if (userRole === "admin") {
@@ -684,7 +710,6 @@
                             cellTd.appendChild(wrapper);
                         });
                     } else {
-                        // Empty cell click opens add modal for admins
                         if (userRole === "admin") {
                             cellTd.addEventListener("click", () => {
                                 openAssignmentModal(null, day, p);
@@ -692,10 +717,9 @@
                         }
                     }
                     
-                    // Render small badge if conflicts exist
                     if (cellConflicts.length > 0) {
                         const badge = document.createElement("span");
-                        badge.className = "absolute top-1 right-1 text-red-500 text-xs";
+                        badge.className = "absolute top-1 right-1 text-red-600 text-xs";
                         badge.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i>`;
                         cellTd.appendChild(badge);
                     }
@@ -707,7 +731,6 @@
             });
         }
 
-        // 6. Conflicts Renderer
         function renderConflicts(data) {
             const list = document.getElementById("conflict-list");
             list.innerHTML = "";
@@ -738,15 +761,12 @@
                     </div>
                 `;
                 
-                // Clicking conflict highlights it on the grid
                 item.addEventListener("click", () => {
                     const uniqueId = c.details.load_entry_id || c.affected_ids[0];
                     if (highlightConflictIds.includes(uniqueId)) {
                         highlightConflictIds = [];
                     } else {
                         highlightConflictIds = [uniqueId];
-                        
-                        // Auto navigate grid filter to matching view if applicable
                         if (c.details.faculty_id && selectedView === "faculty") {
                             document.getElementById("view-item-select").value = c.details.faculty_id;
                             selectedItemId = c.details.faculty_id;
@@ -765,11 +785,175 @@
             });
         }
 
-        // 7. Manual Entry Modal functions
+        // 8. AI Assistant Chat logic
+        function sendQuickPrompt(text) {
+            document.getElementById("ai-input").value = text;
+            handleAIChatSubmit(new Event("submit"));
+        }
+
+        async function handleAIChatSubmit(e) {
+            e.preventDefault();
+            const input = document.getElementById("ai-input");
+            const text = input.value.trim();
+            if (!text) return;
+
+            appendChatMessage("user", text);
+            input.value = "";
+
+            try {
+                const res = await fetch(`${API_URL}/api/ai/query`, {
+                    method: "POST",
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ prompt: text })
+                });
+
+                if (!res.ok) throw new Error("AI Assistant failed to process request");
+
+                const data = await res.json();
+                
+                if (data.mode === "query") {
+                    appendChatMessage("assistant", data.text);
+                } else if (data.mode === "action") {
+                    if (data.status === "valid" && data.diff) {
+                        appendDiffCard(data.text, data.diff);
+                    } else if (data.status === "conflict") {
+                        appendConflictCard(data.text, data.alternatives || []);
+                    } else {
+                        appendChatMessage("assistant", data.text);
+                    }
+                } else {
+                    appendChatMessage("assistant", data.text);
+                }
+            } catch (err) {
+                appendChatMessage("assistant", `❌ Error: ${err.message}`);
+            }
+        }
+
+        function appendChatMessage(role, text) {
+            const history = document.getElementById("ai-chat-history");
+            const msg = document.createElement("div");
+            if (role === "user") {
+                msg.className = "bg-gray-100 text-gray-800 p-2.5 rounded-lg self-end ml-4 border border-gray-200 font-medium";
+            } else {
+                msg.className = "bg-orange-50 text-gray-800 p-2.5 rounded-lg border border-orange-100 whitespace-pre-wrap leading-relaxed";
+            }
+            msg.innerHTML = text;
+            history.appendChild(msg);
+            history.scrollTop = history.scrollHeight;
+        }
+
+        function appendDiffCard(text, diff) {
+            const history = document.getElementById("ai-chat-history");
+            const card = document.createElement("div");
+            card.className = "bg-white border-2 border-orange-200 rounded-lg p-3 space-y-2 text-xs shadow-sm";
+            
+            card.innerHTML = `
+                <div class="font-bold text-gray-900 flex items-center text-xs"><i class="fa-solid fa-file-signature text-orange-600 mr-1.5"></i> Proposed Change Diff</div>
+                <div class="text-gray-600">${text}</div>
+                <div class="flex space-x-2 pt-1">
+                    <button onclick="executeDiff(${JSON.stringify(diff).replace(/"/g, '&quot;')})" class="bg-orange-600 hover:bg-orange-700 text-white font-bold px-3 py-1.5 rounded transition">
+                        ✓ Apply Change
+                    </button>
+                    <button onclick="this.parentElement.parentElement.remove()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-3 py-1.5 rounded transition">
+                        ✕ Reject
+                    </button>
+                </div>
+            `;
+            history.appendChild(card);
+            history.scrollTop = history.scrollHeight;
+        }
+
+        function appendConflictCard(text, alternatives) {
+            const history = document.getElementById("ai-chat-history");
+            const card = document.createElement("div");
+            card.className = "bg-red-50 border border-red-200 rounded-lg p-3 space-y-2 text-xs text-red-900";
+            
+            let altButtons = "";
+            alternatives.forEach(alt => {
+                altButtons += `<button onclick="sendQuickPrompt('Move class to ${alt}')" class="bg-white hover:bg-orange-100 text-orange-800 border border-orange-300 font-bold px-2 py-1 rounded text-[11px] mr-1 mb-1 transition">📅 Try ${alt}</button>`;
+            });
+
+            card.innerHTML = `
+                <div class="font-bold flex items-center text-red-700"><i class="fa-solid fa-triangle-exclamation mr-1.5"></i> Conflict Detected</div>
+                <div>${text}</div>
+                ${alternatives.length > 0 ? `<div class="pt-1"><div class="font-semibold text-gray-700 mb-1">Recommended Alternatives:</div>${altButtons}</div>` : ''}
+            `;
+            history.appendChild(card);
+            history.scrollTop = history.scrollHeight;
+        }
+
+        async function executeDiff(diff) {
+            try {
+                const res = await fetch(`${API_URL}/api/ai/execute`, {
+                    method: "POST",
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ diff: diff })
+                });
+
+                if (!res.ok) throw new Error("Failed to execute AI change");
+
+                // Trigger signature pulse animation on modified slots
+                modifiedCellTsIds = [];
+                if (diff.to_add) {
+                    diff.to_add.forEach(item => {
+                        if (item.timeslot_id) modifiedCellTsIds.push(item.timeslot_id);
+                    });
+                }
+                
+                appendChatMessage("assistant", "✅ Applied changes to the single source assignment dataset! All timetable views updated.");
+                
+                await fetchAllData();
+                fetchConflicts();
+                
+                // Clear pulse after 6 seconds
+                setTimeout(() => {
+                    modifiedCellTsIds = [];
+                    renderGrid();
+                }, 6000);
+            } catch (err) {
+                alert(err.message);
+            }
+        }
+
+        async function handleAutoSolve() {
+            if (!confirm("Are you sure you want to run Google OR-Tools CP-SAT Auto-Generation? This will generate a complete conflict-free schedule from Load Distribution!")) return;
+
+            const btn = document.getElementById("auto-solve-btn");
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `<span><i class="fa-solid fa-spinner animate-spin mr-2"></i> Solving CP-SAT...</span>`;
+
+            try {
+                const res = await fetch(`${API_URL}/api/ai/solve`, {
+                    method: "POST",
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({})
+                });
+
+                if (!res.ok) throw new Error("Auto-generation failed");
+
+                const data = await res.json();
+                if (data.status === "success") {
+                    alert(data.message);
+                    appendChatMessage("assistant", `🎉 CP-SAT Solver auto-generated ${data.assignments.length} conflict-free assignments across all branches!`);
+                    
+                    await fetchAllData();
+                    fetchConflicts();
+                } else {
+                    alert(data.message);
+                }
+            } catch (err) {
+                alert(err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+
+        // 9. Manual Entry Modal functions
         function openAssignmentModal(assign = null, defDay = "Monday", defPeriod = 1) {
             document.getElementById("modal-title").innerText = assign ? "Edit Timetable Assignment" : "Add Timetable Assignment";
             
-            // Populate form options
             const facSelect = document.getElementById("form-faculty");
             facSelect.innerHTML = "";
             allFaculty.forEach(f => {
@@ -904,7 +1088,6 @@
             }
         }
 
-        // 8. CSV Bulk Import functions
         function openCSVModal() {
             document.getElementById("csv-file-input").value = "";
             document.getElementById("csv-preview-panel").classList.add("hidden");
@@ -913,7 +1096,7 @@
             document.getElementById("csv-modal").classList.remove("hidden");
         }
 
-        let csvParsedData = null; // Temp holder for preview response
+        let csvParsedData = null; 
 
         async function handleCSVPreview() {
             const fileInput = document.getElementById("csv-file-input");
@@ -958,7 +1141,6 @@
             errorsAlert.innerHTML = "";
             errorsAlert.classList.add("hidden");
             
-            // Show errors if any
             if (data.error_count > 0) {
                 errorsAlert.classList.remove("hidden");
                 data.errors.forEach(err => {
@@ -975,7 +1157,6 @@
                 return;
             }
             
-            // Build Table headers
             const cols = Object.keys(data.preview[0]);
             cols.forEach(col => {
                 const th = document.createElement("th");
@@ -984,7 +1165,6 @@
                 tableHeaders.appendChild(th);
             });
             
-            // Build Table body
             data.preview.forEach(row => {
                 const tr = document.createElement("tr");
                 tr.className = "hover:bg-gray-50 border-b border-gray-100";
@@ -1012,7 +1192,7 @@
                     headers: getAuthHeaders(),
                     body: JSON.stringify({
                         type: csvParsedData.type,
-                        records: csvParsedData.preview // Send previewed valid records
+                        records: csvParsedData.preview 
                     })
                 });
                 
@@ -1030,7 +1210,6 @@
             }
         }
 
-        // 9. Seeding Trigger handler
         async function handleLegacySeeding() {
             if (!confirm("Are you sure you want to seed legacy spreadsheet files? This will clear all existing custom timetables!")) return;
             
