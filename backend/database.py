@@ -5,14 +5,31 @@ from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 
 import shutil
 
-ORIG_DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "timetable.db")
+# Search multiple potential paths for the bundled timetable.db file (essential for Vercel packaging)
+potential_paths = [
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "timetable.db"),
+    os.path.join(os.getcwd(), "timetable.db"),
+    "/var/task/timetable.db",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "timetable.db")
+]
+
+ORIG_DB_PATH = None
+for path in potential_paths:
+    if os.path.exists(path):
+        ORIG_DB_PATH = path
+        break
+
+if ORIG_DB_PATH is None:
+    # Fallback default
+    ORIG_DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "timetable.db")
+
 if os.environ.get("VERCEL"):
     DB_PATH = "/tmp/timetable.db"
     if not os.path.exists(DB_PATH) and os.path.exists(ORIG_DB_PATH):
         try:
             shutil.copy(ORIG_DB_PATH, DB_PATH)
         except Exception as e:
-            print(f"Error copying DB: {e}")
+            print(f"Error copying DB to /tmp: {e}")
 else:
     DB_PATH = ORIG_DB_PATH
 
