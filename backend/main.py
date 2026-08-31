@@ -439,7 +439,7 @@ def delete_assignment(assign_id: int, db: Session = Depends(get_db)):
 # ----------------- CSV Import/Preview/Commit -----------------
 
 @app.post("/api/csv/preview", dependencies=[Depends(require_admin)])
-async def upload_csv_preview(file: UploadFile = File(...), type: str = Form(...)):
+async def upload_csv_preview(file: UploadFile = File(...), csv_type: str = Form(..., alias="type")):
     content = await file.read()
     decoded = content.decode('utf-8')
     f = StringIO(decoded)
@@ -454,7 +454,7 @@ async def upload_csv_preview(file: UploadFile = File(...), type: str = Form(...)
         record = dict(row)
         
         # Basic validation depending on type
-        if type == "assignments":
+        if csv_type == "assignments":
             req_cols = ["faculty_id", "subject_id", "room_id", "timeslot_id", "effective_from"]
             missing = [col for col in req_cols if col not in record or not record[col].strip()]
             if missing:
@@ -470,7 +470,7 @@ async def upload_csv_preview(file: UploadFile = File(...), type: str = Form(...)
                     "effective_from": record["effective_from"].strip(),
                     "effective_to": record.get("effective_to", "").strip() or None
                 })
-        elif type == "faculty":
+        elif csv_type == "faculty":
             req_cols = ["id", "full_name"]
             missing = [col for col in req_cols if col not in record or not record[col].strip()]
             if missing:
@@ -483,7 +483,7 @@ async def upload_csv_preview(file: UploadFile = File(...), type: str = Form(...)
                     "department": record.get("department", "").strip() or None,
                     "max_weekly_hours": int(record.get("max_weekly_hours", "16").strip() or "16")
                 })
-        elif type == "subjects":
+        elif csv_type == "subjects":
             req_cols = ["id", "code", "name", "type", "weekly_hours"]
             missing = [col for col in req_cols if col not in record or not record[col].strip()]
             if missing:
@@ -497,7 +497,7 @@ async def upload_csv_preview(file: UploadFile = File(...), type: str = Form(...)
                     "weekly_hours": int(record["weekly_hours"].strip() or "4"),
                     "department": record.get("department", "").strip() or None
                 })
-        elif type == "rooms":
+        elif csv_type == "rooms":
             req_cols = ["id", "name", "type", "capacity"]
             missing = [col for col in req_cols if col not in record or not record[col].strip()]
             if missing:
@@ -515,7 +515,7 @@ async def upload_csv_preview(file: UploadFile = File(...), type: str = Form(...)
             
     return {
         "filename": file.filename,
-        "type": type,
+        "type": csv_type,
         "total_rows": len(records) + len(errors),
         "valid_count": len(records),
         "error_count": len(errors),
