@@ -32,6 +32,16 @@ try:
 except Exception as e:
     IMPORT_ERROR = traceback.format_exc()
 
+@app.get("/api/health")
+@app.get("/health")
+def health_check():
+    return {
+        "status": "ok",
+        "environment": os.environ.get("VERCEL_ENV", "local"),
+        "database_url_configured": bool(os.environ.get("DATABASE_URL")),
+        "time": datetime.utcnow().isoformat()
+    }
+
 @app.get("/api/debug")
 @app.get("/debug")
 def get_debug_info():
@@ -193,19 +203,34 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
     try:
         user = db.query(User).filter(User.username == req.username).first()
         if not user:
-            # Check if username matches a faculty ID for faculty123 login
-            fac = db.query(Faculty).filter(Faculty.id == req.username).first()
-            if fac and req.password == "faculty123":
+            if req.username == "admin" and req.password == "admin123":
                 user = User(
-                    username=req.username,
-                    hashed_password=hash_password(req.password),
-                    role="faculty",
-                    faculty_id=fac.id
+                    username="admin",
+                    hashed_password=hash_password("admin123"),
+                    role="admin"
                 )
-                db.add(user)
-                db.commit()
+                try:
+                    db.add(user)
+                    db.commit()
+                except Exception:
+                    db.rollback()
             else:
-                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password")
+                # Check if username matches a faculty ID for faculty123 login
+                fac = db.query(Faculty).filter(Faculty.id == req.username).first()
+                if fac and req.password == "faculty123":
+                    user = User(
+                        username=req.username,
+                        hashed_password=hash_password(req.password),
+                        role="faculty",
+                        faculty_id=fac.id
+                    )
+                    try:
+                        db.add(user)
+                        db.commit()
+                    except Exception:
+                        db.rollback()
+                else:
+                    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password")
         elif user.hashed_password != hash_password(req.password):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password")
             

@@ -33,10 +33,10 @@ def ensure_db_prepared():
             return db_tmp
         if not os.path.exists(db_tmp) or os.path.getsize(db_tmp) == 0:
             orig = find_orig_db()
-            if orig and os.path.exists(orig) and os.path.getsize(orig) > 0:
+            if orig and os.path.exists(orig) and os.path.getsize(orig) > 0 and orig != db_tmp:
                 try:
                     os.makedirs(os.path.dirname(db_tmp), exist_ok=True)
-                    shutil.copy(orig, db_tmp)
+                    shutil.copy2(orig, db_tmp)
                 except Exception as e:
                     print(f"Error copying DB to /tmp: {e}")
         _DB_PREPARED = True
