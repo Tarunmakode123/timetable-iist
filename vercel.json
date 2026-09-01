@@ -1,10 +1,7 @@
 {
   "functions": {
     "api/index.py": {
-      "includeFiles": [
-        "timetable.db",
-        "public/**"
-      ]
+      "includeFiles": "timetable.db"
     }
   },
   "rewrites": [
