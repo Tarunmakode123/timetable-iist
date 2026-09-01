@@ -16,18 +16,14 @@ potential_paths = [
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "timetable.db")
 ]
 
-def find_orig_db():
-    for path in potential_paths:
-        if os.path.exists(path) and os.path.getsize(path) > 0:
-            return path
-    return os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "timetable.db")
-
-ORIG_DB_PATH = find_orig_db()
+_DB_PREPARED = False
 
 def ensure_db_prepared():
-    global ORIG_DB_PATH
+    global _DB_PREPARED, ORIG_DB_PATH
     if os.environ.get("VERCEL"):
         db_tmp = "/tmp/timetable.db"
+        if _DB_PREPARED and os.path.exists(db_tmp) and os.path.getsize(db_tmp) > 0:
+            return db_tmp
         if not os.path.exists(db_tmp) or os.path.getsize(db_tmp) == 0:
             orig = find_orig_db()
             if orig and os.path.exists(orig) and os.path.getsize(orig) > 0:
@@ -36,6 +32,7 @@ def ensure_db_prepared():
                     shutil.copy(orig, db_tmp)
                 except Exception as e:
                     print(f"Error copying DB to /tmp: {e}")
+        _DB_PREPARED = True
         return db_tmp
     return ORIG_DB_PATH
 

@@ -70,9 +70,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from fastapi.responses import JSONResponse
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    import traceback
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Internal Server Error: {str(exc)}\n{traceback.format_exc()}"}
+    )
+
 # Dependency to get db session
 def get_db():
-    init_db()
     db = SessionLocal()
     try:
         yield db
