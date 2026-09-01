@@ -16,27 +16,30 @@ potential_paths = [
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "timetable.db")
 ]
 
-ORIG_DB_PATH = None
-for path in potential_paths:
-    if os.path.exists(path) and os.path.getsize(path) > 0:
-        ORIG_DB_PATH = path
-        break
+def find_orig_db():
+    for path in potential_paths:
+        if os.path.exists(path) and os.path.getsize(path) > 0:
+            return path
+    return os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "timetable.db")
 
-if ORIG_DB_PATH is None:
-    ORIG_DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "timetable.db")
+ORIG_DB_PATH = find_orig_db()
 
-if os.environ.get("VERCEL"):
-    DB_PATH = "/tmp/timetable.db"
-    if not os.path.exists(DB_PATH) or os.path.getsize(DB_PATH) == 0:
-        if ORIG_DB_PATH and os.path.exists(ORIG_DB_PATH):
-            try:
-                os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-                shutil.copy(ORIG_DB_PATH, DB_PATH)
-            except Exception as e:
-                print(f"Error copying DB to /tmp: {e}")
-else:
-    DB_PATH = ORIG_DB_PATH
+def ensure_db_prepared():
+    global ORIG_DB_PATH
+    if os.environ.get("VERCEL"):
+        db_tmp = "/tmp/timetable.db"
+        if not os.path.exists(db_tmp) or os.path.getsize(db_tmp) == 0:
+            orig = find_orig_db()
+            if orig and os.path.exists(orig) and os.path.getsize(orig) > 0:
+                try:
+                    os.makedirs(os.path.dirname(db_tmp), exist_ok=True)
+                    shutil.copy(orig, db_tmp)
+                except Exception as e:
+                    print(f"Error copying DB to /tmp: {e}")
+        return db_tmp
+    return ORIG_DB_PATH
 
+DB_PATH = ensure_db_prepared()
 DATABASE_URL = f"sqlite:///{DB_PATH}"
 
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False}, poolclass=NullPool)
@@ -147,6 +150,7 @@ class LoadDistribution(Base):
     total_hours = Column(Float, default=0.0)
 
 def init_db():
+    ensure_db_prepared()
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     try:

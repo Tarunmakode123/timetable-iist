@@ -197,17 +197,37 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
 @app.post("/api/auth/login")
 @app.post("/auth/login")
 def login(req: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.username == req.username).first()
-    if not user or user.hashed_password != hash_password(req.password):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password")
-        
-    token = create_token(user.username, user.role)
-    return {
-        "token": token,
-        "username": user.username,
-        "role": user.role,
-        "faculty_id": user.faculty_id
-    }
+    try:
+        user = db.query(User).filter(User.username == req.username).first()
+        if not user:
+            # Check if username matches a faculty ID for faculty123 login
+            fac = db.query(Faculty).filter(Faculty.id == req.username).first()
+            if fac and req.password == "faculty123":
+                user = User(
+                    username=req.username,
+                    hashed_password=hash_password(req.password),
+                    role="faculty",
+                    faculty_id=fac.id
+                )
+                db.add(user)
+                db.commit()
+            else:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password")
+        elif user.hashed_password != hash_password(req.password):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password")
+            
+        token = create_token(user.username, user.role)
+        return {
+            "token": token,
+            "username": user.username,
+            "role": user.role,
+            "faculty_id": user.faculty_id
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        raise HTTPException(status_code=500, detail=f"Login Exception: {str(e)}")
 
 @app.get("/api/auth/me")
 @app.get("/auth/me")
