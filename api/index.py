@@ -10,26 +10,29 @@ for p in [current_dir, parent_dir, cwd]:
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from backend.main import app
+from backend.main import app as fastapi_app
 
-class VercelPathFixMiddleware:
+class VercelASGIAdapter:
     def __init__(self, app):
         self.app = app
 
     async def __call__(self, scope, receive, send):
         if scope.get("type") == "http":
-            query_string = scope.get("query_string", b"").decode("utf-8")
-            parsed_query = parse_qs(query_string)
-            if "path" in parsed_query and parsed_query["path"]:
-                scope["path"] = parsed_query["path"][0]
-            elif scope.get("path") in ["/api/index.py", "/api/index", "/api"]:
-                headers = dict(scope.get("headers", []))
-                matched_path = headers.get(b"x-matched-path", b"").decode("utf-8")
-                if matched_path and matched_path not in ["/api/index.py", "/api/index", "/api"]:
-                    scope["path"] = matched_path
+            headers = dict(scope.get("headers", []))
+            forwarded_uri = headers.get(b"x-forwarded-uri", b"").decode("utf-8")
+            if forwarded_uri and forwarded_uri.startswith("/api"):
+                scope["path"] = forwarded_uri.split("?")[0]
+            else:
+                raw_query = scope.get("query_string", b"").decode("utf-8")
+                if "path=" in raw_query:
+                    pq = parse_qs(raw_query)
+                    if "path" in pq:
+                        scope["path"] = pq["path"][0]
+
         await self.app(scope, receive, send)
 
-app.add_middleware(VercelPathFixMiddleware)
+app = VercelASGIAdapter(fastapi_app)
+
 
 
 
