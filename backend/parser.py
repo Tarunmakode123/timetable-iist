@@ -1,3 +1,4 @@
+import openpyxl
 import os
 import re
 from datetime import datetime
@@ -124,6 +125,8 @@ def parse_grid_cell(room_val, subject_val, faculty_val):
                 batch = "B1"
             elif "B2" in s_part or "b2" in s_part.lower():
                 batch = "B2"
+            else:
+                batch = f"B{i+1}"
                 
             clean_sub = re.sub(r'\b(B1|B2|b1|b2)\b', '', s_part).strip()
             clean_sub = " ".join(clean_sub.split())
@@ -668,13 +671,55 @@ def seed_legacy_data(db: Session, excel_files: dict):
     if iii_path and os.path.exists(iii_path):
         legacy_assignments.extend(parse_class_wise_timetables(iii_path, 3, fac_map))
         
+    primary_keys = set()
+    for a in legacy_assignments:
+        sec = a.get("section_id")
+        batch = a.get("batch_label")
+        fac = a.get("faculty_id")
+        day = a.get("day", "").capitalize()
+        p = a.get("period")
+        if sec:
+            primary_keys.add((day, p, sec, batch))
+        if fac and fac != "unknown":
+            primary_keys.add((day, p, fac))
+            
     lab_path = excel_files.get("Lab_Wise")
     if lab_path and os.path.exists(lab_path):
-        legacy_assignments.extend(parse_lab_wise_timetables(lab_path, fac_map))
+        lab_assigns = parse_lab_wise_timetables(lab_path, fac_map)
+        for a in lab_assigns:
+            sec = a.get("section_id")
+            batch = a.get("batch_label")
+            fac = a.get("faculty_id")
+            day = a.get("day", "").capitalize()
+            p = a.get("period")
+            
+            k_sec = (day, p, sec, batch) if sec else None
+            k_fac = (day, p, fac) if fac and fac != "unknown" else None
+            
+            if (k_sec and k_sec in primary_keys) or (k_fac and k_fac in primary_keys):
+                continue
+            legacy_assignments.append(a)
+            if k_sec: primary_keys.add(k_sec)
+            if k_fac: primary_keys.add(k_fac)
         
     fac_path = excel_files.get("Individual_Faculty")
     if fac_path and os.path.exists(fac_path):
-        legacy_assignments.extend(parse_individual_faculty_wise(fac_path, fac_map))
+        fac_assigns = parse_individual_faculty_wise(fac_path, fac_map)
+        for a in fac_assigns:
+            sec = a.get("section_id")
+            batch = a.get("batch_label")
+            fac = a.get("faculty_id")
+            day = a.get("day", "").capitalize()
+            p = a.get("period")
+            
+            k_sec = (day, p, sec, batch) if sec else None
+            k_fac = (day, p, fac) if fac and fac != "unknown" else None
+            
+            if (k_sec and k_sec in primary_keys) or (k_fac and k_fac in primary_keys):
+                continue
+            legacy_assignments.append(a)
+            if k_sec: primary_keys.add(k_sec)
+            if k_fac: primary_keys.add(k_fac)
         
     for a in legacy_assignments:
         room_name = a["room_id"].strip()
