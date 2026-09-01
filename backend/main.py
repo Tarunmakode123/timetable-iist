@@ -72,6 +72,7 @@ app.add_middleware(
 
 # Dependency to get db session
 def get_db():
+    init_db()
     db = SessionLocal()
     try:
         yield db

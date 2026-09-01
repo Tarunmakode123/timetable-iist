@@ -12,27 +12,28 @@ potential_paths = [
     os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "timetable.db"),
     os.path.join(os.getcwd(), "timetable.db"),
     "/var/task/timetable.db",
+    "/var/task/api/timetable.db",
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "timetable.db")
 ]
 
 ORIG_DB_PATH = None
 for path in potential_paths:
-    if os.path.exists(path):
+    if os.path.exists(path) and os.path.getsize(path) > 0:
         ORIG_DB_PATH = path
         break
 
 if ORIG_DB_PATH is None:
-    # Fallback default
     ORIG_DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "timetable.db")
 
 if os.environ.get("VERCEL"):
     DB_PATH = "/tmp/timetable.db"
-    if not os.path.exists(DB_PATH) and os.path.exists(ORIG_DB_PATH):
-        try:
-            os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-            shutil.copy(ORIG_DB_PATH, DB_PATH)
-        except Exception as e:
-            print(f"Error copying DB to /tmp: {e}")
+    if not os.path.exists(DB_PATH) or os.path.getsize(DB_PATH) == 0:
+        if ORIG_DB_PATH and os.path.exists(ORIG_DB_PATH):
+            try:
+                os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+                shutil.copy(ORIG_DB_PATH, DB_PATH)
+            except Exception as e:
+                print(f"Error copying DB to /tmp: {e}")
 else:
     DB_PATH = ORIG_DB_PATH
 
@@ -148,46 +149,49 @@ class LoadDistribution(Base):
 def init_db():
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
-    
-    # Seed canonical timeslots
-    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-    canonical_slots = [
-        ("1", "09:30", "10:20"),
-        ("2", "10:20", "11:10"),
-        ("3", "11:10", "12:00"),
-        ("4", "12:00", "12:50"),
-        ("5", "12:50", "13:40"),  # Lunch Slot
-        ("6", "13:40", "14:30"),
-        ("7", "14:30", "15:20"),
-        ("8", "15:20", "16:00")
-    ]
-    
-    # Check if slots are already seeded
-    existing_slots = db.query(TimeSlot).count()
-    if existing_slots == 0:
-        for day in days:
-            for s_num, start, end in canonical_slots:
-                slot = TimeSlot(
-                    id=f"{day}_{s_num}",
-                    day=day,
-                    start_time=start,
-                    end_time=end
-                )
-                db.add(slot)
-        db.commit()
-    
-    # Seed default admin user if not exists
-    admin_exists = db.query(User).filter(User.username == "admin").first()
-    if not admin_exists:
-        admin_user = User(
-            username="admin",
-            hashed_password=hash_password("admin123"),
-            role="admin"
-        )
-        db.add(admin_user)
-        db.commit()
+    try:
+        # Seed canonical timeslots
+        days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+        canonical_slots = [
+            ("1", "09:30", "10:20"),
+            ("2", "10:20", "11:10"),
+            ("3", "11:10", "12:00"),
+            ("4", "12:00", "12:50"),
+            ("5", "12:50", "13:40"),  # Lunch Slot
+            ("6", "13:40", "14:30"),
+            ("7", "14:30", "15:20"),
+            ("8", "15:20", "16:00")
+        ]
         
-    db.close()
+        # Check if slots are already seeded
+        existing_slots = db.query(TimeSlot).count()
+        if existing_slots == 0:
+            for day in days:
+                for s_num, start, end in canonical_slots:
+                    slot = TimeSlot(
+                        id=f"{day}_{s_num}",
+                        day=day,
+                        start_time=start,
+                        end_time=end
+                    )
+                    db.add(slot)
+            db.commit()
+        
+        # Seed default admin user if not exists
+        admin_exists = db.query(User).filter(User.username == "admin").first()
+        if not admin_exists:
+            admin_user = User(
+                username="admin",
+                hashed_password=hash_password("admin123"),
+                role="admin"
+            )
+            db.add(admin_user)
+            db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"init_db error: {e}")
+    finally:
+        db.close()
 
 if __name__ == "__main__":
     init_db()
