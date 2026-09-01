@@ -1,4 +1,3 @@
-import openpyxl
 import os
 import re
 from datetime import datetime
@@ -488,6 +487,7 @@ def parse_lab_wise_timetables(path, global_faculty_mapping):
     return assignments
 
 def seed_legacy_data(db: Session, excel_files: dict):
+    import openpyxl
     fac_map = {}
     sub_map = {}
     

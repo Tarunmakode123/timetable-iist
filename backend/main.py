@@ -28,21 +28,7 @@ import traceback
 
 IMPORT_ERROR = None
 try:
-    # Ensure database tables exist and admin user is seeded on startup (essential for Vercel)
     init_db()
-    db_init = SessionLocal()
-    try:
-        admin_exists = db_init.query(User).filter(User.username == "admin").first()
-        if not admin_exists:
-            admin = User(
-                username="admin",
-                hashed_password=hash_password("admin123"),
-                role="admin"
-            )
-            db_init.add(admin)
-            db_init.commit()
-    finally:
-        db_init.close()
 except Exception as e:
     IMPORT_ERROR = traceback.format_exc()
 
