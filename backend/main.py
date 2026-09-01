@@ -232,8 +232,8 @@ def get_me(user: User = Depends(get_current_user)):
 
 # ----------------- Seed & DB init -----------------
 
-@app.post("/api/admin/seed-legacy", dependencies=[Depends(require_admin)])
-def trigger_legacy_seeding(db: Session = Depends(get_db)):
+@app.post("/api/admin/seed-legacy")
+def trigger_legacy_seeding(admin: User = Depends(require_admin), db: Session = Depends(get_db)):
     files = {
         "II Year_TT": r"C:\Users\tarun\Downloads\II Year_TT_July-Dec 24.xlsx",
         "III Year_TT": r"C:\Users\tarun\Downloads\III Year_TT_July-Dec 24 (2).xlsx",
@@ -277,8 +277,8 @@ def get_conflicts(db: Session = Depends(get_db)):
 def get_faculty(db: Session = Depends(get_db)):
     return db.query(Faculty).all()
 
-@app.post("/api/faculty", dependencies=[Depends(require_admin)])
-def create_faculty(req: FacultyCreate, db: Session = Depends(get_db)):
+@app.post("/api/faculty")
+def create_faculty(req: FacultyCreate, admin: User = Depends(require_admin), db: Session = Depends(get_db)):
     if db.query(Faculty).filter(Faculty.id == req.id).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Faculty ID already exists")
     fac = Faculty(**req.dict())
@@ -286,8 +286,8 @@ def create_faculty(req: FacultyCreate, db: Session = Depends(get_db)):
     db.commit()
     return fac
 
-@app.put("/api/faculty/{fac_id}", dependencies=[Depends(require_admin)])
-def update_faculty(fac_id: str, req: FacultyCreate, db: Session = Depends(get_db)):
+@app.put("/api/faculty/{fac_id}")
+def update_faculty(fac_id: str, req: FacultyCreate, admin: User = Depends(require_admin), db: Session = Depends(get_db)):
     fac = db.query(Faculty).filter(Faculty.id == fac_id).first()
     if not fac:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Faculty not found")
@@ -296,8 +296,8 @@ def update_faculty(fac_id: str, req: FacultyCreate, db: Session = Depends(get_db
     db.commit()
     return fac
 
-@app.delete("/api/faculty/{fac_id}", dependencies=[Depends(require_admin)])
-def delete_faculty(fac_id: str, db: Session = Depends(get_db)):
+@app.delete("/api/faculty/{fac_id}")
+def delete_faculty(fac_id: str, admin: User = Depends(require_admin), db: Session = Depends(get_db)):
     fac = db.query(Faculty).filter(Faculty.id == fac_id).first()
     if not fac:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Faculty not found")
@@ -310,8 +310,8 @@ def delete_faculty(fac_id: str, db: Session = Depends(get_db)):
 def get_subjects(db: Session = Depends(get_db)):
     return db.query(Subject).all()
 
-@app.post("/api/subjects", dependencies=[Depends(require_admin)])
-def create_subject(req: SubjectCreate, db: Session = Depends(get_db)):
+@app.post("/api/subjects")
+def create_subject(req: SubjectCreate, admin: User = Depends(require_admin), db: Session = Depends(get_db)):
     if db.query(Subject).filter(Subject.id == req.id).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Subject ID already exists")
     sub = Subject(**req.dict())
@@ -319,8 +319,8 @@ def create_subject(req: SubjectCreate, db: Session = Depends(get_db)):
     db.commit()
     return sub
 
-@app.put("/api/subjects/{sub_id}", dependencies=[Depends(require_admin)])
-def update_subject(sub_id: str, req: SubjectCreate, db: Session = Depends(get_db)):
+@app.put("/api/subjects/{sub_id}")
+def update_subject(sub_id: str, req: SubjectCreate, admin: User = Depends(require_admin), db: Session = Depends(get_db)):
     sub = db.query(Subject).filter(Subject.id == sub_id).first()
     if not sub:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subject not found")
@@ -329,8 +329,8 @@ def update_subject(sub_id: str, req: SubjectCreate, db: Session = Depends(get_db
     db.commit()
     return sub
 
-@app.delete("/api/subjects/{sub_id}", dependencies=[Depends(require_admin)])
-def delete_subject(sub_id: str, db: Session = Depends(get_db)):
+@app.delete("/api/subjects/{sub_id}")
+def delete_subject(sub_id: str, admin: User = Depends(require_admin), db: Session = Depends(get_db)):
     sub = db.query(Subject).filter(Subject.id == sub_id).first()
     if not sub:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subject not found")
@@ -343,8 +343,8 @@ def delete_subject(sub_id: str, db: Session = Depends(get_db)):
 def get_rooms(db: Session = Depends(get_db)):
     return db.query(Room).all()
 
-@app.post("/api/rooms", dependencies=[Depends(require_admin)])
-def create_room(req: RoomCreate, db: Session = Depends(get_db)):
+@app.post("/api/rooms")
+def create_room(req: RoomCreate, admin: User = Depends(require_admin), db: Session = Depends(get_db)):
     if db.query(Room).filter(Room.id == req.id).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Room ID already exists")
     room = Room(**req.dict())
@@ -352,8 +352,8 @@ def create_room(req: RoomCreate, db: Session = Depends(get_db)):
     db.commit()
     return room
 
-@app.put("/api/rooms/{room_id}", dependencies=[Depends(require_admin)])
-def update_room(room_id: str, req: RoomCreate, db: Session = Depends(get_db)):
+@app.put("/api/rooms/{room_id}")
+def update_room(room_id: str, req: RoomCreate, admin: User = Depends(require_admin), db: Session = Depends(get_db)):
     room = db.query(Room).filter(Room.id == room_id).first()
     if not room:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Room not found")
@@ -362,8 +362,8 @@ def update_room(room_id: str, req: RoomCreate, db: Session = Depends(get_db)):
     db.commit()
     return room
 
-@app.delete("/api/rooms/{room_id}", dependencies=[Depends(require_admin)])
-def delete_room(room_id: str, db: Session = Depends(get_db)):
+@app.delete("/api/rooms/{room_id}")
+def delete_room(room_id: str, admin: User = Depends(require_admin), db: Session = Depends(get_db)):
     room = db.query(Room).filter(Room.id == room_id).first()
     if not room:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Room not found")
@@ -386,8 +386,8 @@ def get_sections(db: Session = Depends(get_db)):
         })
     return res
 
-@app.post("/api/sections", dependencies=[Depends(require_admin)])
-def create_section(req: SectionCreate, db: Session = Depends(get_db)):
+@app.post("/api/sections")
+def create_section(req: SectionCreate, admin: User = Depends(require_admin), db: Session = Depends(get_db)):
     if db.query(Section).filter(Section.id == req.id).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Section ID already exists")
     sec = Section(**req.dict())
@@ -401,8 +401,8 @@ def create_section(req: SectionCreate, db: Session = Depends(get_db)):
     db.commit()
     return sec
 
-@app.delete("/api/sections/{sec_id}", dependencies=[Depends(require_admin)])
-def delete_section(sec_id: str, db: Session = Depends(get_db)):
+@app.delete("/api/sections/{sec_id}")
+def delete_section(sec_id: str, admin: User = Depends(require_admin), db: Session = Depends(get_db)):
     sec = db.query(Section).filter(Section.id == sec_id).first()
     if not sec:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Section not found")
@@ -416,8 +416,8 @@ def delete_section(sec_id: str, db: Session = Depends(get_db)):
 def get_assignments(db: Session = Depends(get_db)):
     return db.query(Assignment).all()
 
-@app.post("/api/assignments", dependencies=[Depends(require_admin)])
-def create_assignment(req: AssignmentCreate, db: Session = Depends(get_db)):
+@app.post("/api/assignments")
+def create_assignment(req: AssignmentCreate, admin: User = Depends(require_admin), db: Session = Depends(get_db)):
     # Validate timeslot
     if not db.query(TimeSlot).filter(TimeSlot.id == req.timeslot_id).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid timeslot")
@@ -438,8 +438,8 @@ def create_assignment(req: AssignmentCreate, db: Session = Depends(get_db)):
     db.commit()
     return assign
 
-@app.put("/api/assignments/{assign_id}", dependencies=[Depends(require_admin)])
-def update_assignment(assign_id: int, req: AssignmentCreate, db: Session = Depends(get_db)):
+@app.put("/api/assignments/{assign_id}")
+def update_assignment(assign_id: int, req: AssignmentCreate, admin: User = Depends(require_admin), db: Session = Depends(get_db)):
     assign = db.query(Assignment).filter(Assignment.id == assign_id).first()
     if not assign:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
@@ -449,8 +449,8 @@ def update_assignment(assign_id: int, req: AssignmentCreate, db: Session = Depen
     db.commit()
     return assign
 
-@app.delete("/api/assignments/{assign_id}", dependencies=[Depends(require_admin)])
-def delete_assignment(assign_id: int, db: Session = Depends(get_db)):
+@app.delete("/api/assignments/{assign_id}")
+def delete_assignment(assign_id: int, admin: User = Depends(require_admin), db: Session = Depends(get_db)):
     assign = db.query(Assignment).filter(Assignment.id == assign_id).first()
     if not assign:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
@@ -460,8 +460,8 @@ def delete_assignment(assign_id: int, db: Session = Depends(get_db)):
 
 # ----------------- CSV Import/Preview/Commit -----------------
 
-@app.post("/api/csv/preview", dependencies=[Depends(require_admin)])
-async def upload_csv_preview(file: UploadFile = File(...), csv_type: str = Form(..., alias="type")):
+@app.post("/api/csv/preview")
+async def upload_csv_preview(file: UploadFile = File(...), csv_type: str = Form(..., alias="type"), admin: User = Depends(require_admin)):
     content = await file.read()
     decoded = content.decode('utf-8')
     f = StringIO(decoded)
@@ -545,8 +545,8 @@ async def upload_csv_preview(file: UploadFile = File(...), csv_type: str = Form(
         "preview": records[:50] # Limit preview rows
     }
 
-@app.post("/api/csv/commit", dependencies=[Depends(require_admin)])
-def commit_csv_import(req: dict, db: Session = Depends(get_db)):
+@app.post("/api/csv/commit")
+def commit_csv_import(req: dict, admin: User = Depends(require_admin), db: Session = Depends(get_db)):
     type = req.get("type")
     records = req.get("records", [])
     
