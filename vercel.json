@@ -1,12 +1,15 @@
 {
   "functions": {
     "api/index.py": {
-      "includeFiles": "timetable.db"
+      "includeFiles": [
+        "timetable.db",
+        "public/**"
+      ]
     }
   },
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/api/(.*)",
       "destination": "/api/index.py"
     }
   ]

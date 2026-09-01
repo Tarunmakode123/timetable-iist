@@ -39,7 +39,7 @@ def ensure_db_prepared():
 DB_PATH = ensure_db_prepared()
 DATABASE_URL = f"sqlite:///{DB_PATH}"
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False}, poolclass=NullPool)
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False, "timeout": 30}, poolclass=NullPool)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
