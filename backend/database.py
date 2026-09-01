@@ -16,6 +16,13 @@ potential_paths = [
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "timetable.db")
 ]
 
+def find_orig_db():
+    for path in potential_paths:
+        if os.path.exists(path) and os.path.getsize(path) > 0:
+            return path
+    return os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "timetable.db")
+
+ORIG_DB_PATH = find_orig_db()
 _DB_PREPARED = False
 
 def ensure_db_prepared():
