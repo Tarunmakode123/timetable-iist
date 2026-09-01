@@ -14,7 +14,16 @@ for p in [current_dir, parent_dir, cwd]:
 from backend.main import app
 
 @app.middleware("http")
-async def catch_exceptions_middleware(request, call_next):
+async def vercel_path_fix_middleware(request, call_next):
+    # Adjust path if rewritten to /api/index.py
+    custom_path = request.query_params.get("path")
+    if custom_path:
+        request.scope["path"] = custom_path
+    elif request.scope["path"] in ["/api/index.py", "/api/index", "/api"]:
+        matched_path = request.headers.get("x-matched-path") or request.headers.get("x-forwarded-uri")
+        if matched_path and matched_path not in ["/api/index.py", "/api/index"]:
+            request.scope["path"] = matched_path
+
     try:
         return await call_next(request)
     except Exception as e:
