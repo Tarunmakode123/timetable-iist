@@ -478,23 +478,20 @@
                     body: JSON.stringify({ username: usernameInput, password: passwordInput })
                 });
                 
+                const responseText = await res.text();
+                
                 if (!res.ok) {
-                    let errMsg = "Authentication failed";
+                    let errMsg = `Server Error (${res.status})`;
                     try {
-                        const err = await res.json();
+                        const err = JSON.parse(responseText);
                         errMsg = err.detail || errMsg;
                     } catch (_) {
-                        try {
-                            const txt = await res.text();
-                            errMsg = txt || `Server Error (${res.status})`;
-                        } catch (_) {
-                            errMsg = `Server Error (${res.status})`;
-                        }
+                        errMsg = responseText.trim() || errMsg;
                     }
                     throw new Error(errMsg);
                 }
                 
-                const data = await res.json();
+                const data = JSON.parse(responseText);
                 userToken = data.token;
                 userRole = data.role;
                 userFacultyId = data.faculty_id || "";
