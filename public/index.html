@@ -1521,7 +1521,7 @@
                     if (data.target_type && data.target_id) {
                         selectedView = data.target_type;
                         document.getElementById("view-type-select").value = data.target_type;
-                        updateViewItemOptions();
+                        populateViewItems();
                         selectedItemId = data.target_id;
                         document.getElementById("view-item-select").value = data.target_id;
                         renderGrid();
