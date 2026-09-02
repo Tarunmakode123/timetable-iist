@@ -6,8 +6,12 @@ const API_URL = "";
 let userToken = localStorage.getItem("token") || "";
 let userRole = localStorage.getItem("role") || "";
 let userFacultyId = localStorage.getItem("faculty_id") || "";
+let isLoggingIn = false;
 
 async function performLogin(usernameInput, passwordInput) {
+    if (isLoggingIn) return;
+    isLoggingIn = true;
+
     const errorDiv = document.getElementById("login-error");
     const submitBtn = document.getElementById("login-submit-btn");
     const originalBtnHtml = submitBtn ? submitBtn.innerHTML : "Sign In";
@@ -21,6 +25,7 @@ async function performLogin(usernameInput, passwordInput) {
             errorDiv.classList.remove("hidden");
         }
         if (typeof showToast === "function") showToast(msg, "error");
+        isLoggingIn = false;
         return;
     }
     
@@ -84,6 +89,7 @@ async function performLogin(usernameInput, passwordInput) {
             showToast(`Login Failed: ${err.message || "Network error"}`, "error");
         }
     } finally {
+        isLoggingIn = false;
         if (submitBtn) {
             submitBtn.disabled = false;
             submitBtn.innerHTML = originalBtnHtml;
