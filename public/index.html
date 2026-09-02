@@ -711,8 +711,44 @@
                 if (loadRes.ok) {
                     allLoadDistribution = await loadRes.json();
                 }
+                updateDateVersionOptions();
             } catch (err) {
                 console.error("Error fetching data", err);
+            }
+        }
+
+        function updateDateVersionOptions(preferLatest = false) {
+            const select = document.getElementById("date-version-select");
+            if (!select) return;
+
+            const datesSet = new Set(allAssignments.map(a => a.effective_from).filter(Boolean));
+            datesSet.add("2024-09-30");
+
+            const sortedDates = Array.from(datesSet).sort();
+
+            select.innerHTML = "";
+            sortedDates.forEach(d => {
+                const opt = document.createElement("option");
+                opt.value = d;
+                if (d === "2024-09-30") {
+                    opt.innerText = "Legacy Baseline Grid (30.09.24)";
+                } else if (d === "2024-11-18") {
+                    opt.innerText = "Legacy Revision Grid (18.11.24)";
+                } else {
+                    opt.innerText = `CP-SAT Generated (${d})`;
+                }
+                select.appendChild(opt);
+            });
+
+            if (preferLatest && sortedDates.length > 0) {
+                selectedDateVersion = sortedDates[sortedDates.length - 1];
+                select.value = selectedDateVersion;
+            } else if (select.options.length > 0) {
+                if (!sortedDates.includes(selectedDateVersion)) {
+                    selectedDateVersion = select.value;
+                } else {
+                    select.value = selectedDateVersion;
+                }
             }
         }
 
@@ -1053,11 +1089,13 @@
                         if (a.timeslot_id !== tsId) return false;
                         if (selectedView === "section") {
                             if (a.section_id !== selectedItemId) return false;
-                            const effFrom = new Date(a.effective_from);
-                            const effTo = a.effective_to ? new Date(a.effective_to) : null;
-                            const selDate = new Date(selectedDateVersion);
-                            if (effFrom > selDate) return false;
-                            if (effTo && effTo < selDate) return false;
+                            if (selectedDateVersion === "2024-09-30") {
+                                if (a.effective_from > "2024-09-30") return false;
+                            } else if (selectedDateVersion === "2024-11-18") {
+                                if (a.effective_from > "2024-11-18") return false;
+                            } else {
+                                if (a.effective_from !== selectedDateVersion) return false;
+                            }
                         } else if (selectedView === "faculty") {
                             if (a.faculty_id !== selectedItemId) return false;
                         } else if (selectedView === "room") {
@@ -1346,11 +1384,23 @@
 
                 const data = await res.json();
                 if (data.status === "success") {
-                    alert(data.message);
-                    appendChatMessage("assistant", `🎉 CP-SAT Solver auto-generated ${data.assignments.length} conflict-free assignments across all branches!`);
+                    // Clear out-of-sync banner immediately upon successful generation
+                    isMasterDataStale = false;
+                    document.getElementById("master-stale-banner").classList.add("hidden");
                     
                     await fetchAllData();
+                    updateDateVersionOptions(true); // Automatically switch to newly generated date version!
+                    
+                    if (selectedView === "master_load") {
+                        selectedView = "section";
+                        document.getElementById("view-type-select").value = "section";
+                    }
+
+                    populateViewItems();
                     fetchConflicts();
+
+                    alert(data.message);
+                    appendChatMessage("assistant", `🎉 CP-SAT Solver auto-generated ${data.assignments.length} conflict-free assignments across all branches! View automatically switched to generated timetable (${selectedDateVersion}).`);
                 } else {
                     alert(data.message);
                 }
