@@ -524,6 +524,43 @@
         </div>
     </div>
 
+    <!-- TOAST CONTAINER -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col space-y-2.5 max-w-sm pointer-events-none"></div>
+
+    <!-- MODAL: IN-APP CONFIRMATION DIALOG -->
+    <div id="custom-confirm-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4 border border-[#EFEBE6]">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-orange-100 text-[#E8590C] flex items-center justify-center text-lg shadow-sm">
+                    <i class="fa-solid fa-circle-question"></i>
+                </div>
+                <h3 id="confirm-modal-title" class="font-heading font-bold text-base text-[#211C1A]">Confirm Action</h3>
+            </div>
+            <p id="confirm-modal-message" class="text-xs text-[#6B6259] leading-relaxed font-medium"></p>
+            <div class="flex justify-end space-x-2.5 pt-3 border-t border-[#FAF8F5]">
+                <button type="button" onclick="handleConfirmResult(false)" class="bg-[#FAF8F5] hover:bg-[#EFEBE6] text-[#211C1A] px-4 py-2 rounded-xl text-xs font-semibold border border-[#EFEBE6] transition">Cancel</button>
+                <button type="button" id="confirm-modal-btn" onclick="handleConfirmResult(true)" class="bg-[#E8590C] hover:bg-[#C74805] text-white font-bold px-4 py-2 rounded-xl text-xs transition shadow-sm">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: IN-APP PROMPT FORM DIALOG -->
+    <div id="custom-prompt-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4 border border-[#EFEBE6]">
+            <div class="flex items-center justify-between border-b border-[#FAF8F5] pb-3">
+                <h3 id="prompt-modal-title" class="font-heading font-bold text-base text-[#211C1A]">Add Record</h3>
+                <button onclick="handlePromptCancel()" class="text-[#6B6259] hover:text-[#211C1A]"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form id="custom-prompt-form" onsubmit="handlePromptSubmit(event)" class="space-y-3">
+                <div id="prompt-modal-fields" class="space-y-3"></div>
+                <div class="flex justify-end space-x-2.5 pt-3 border-t border-[#FAF8F5]">
+                    <button type="button" onclick="handlePromptCancel()" class="bg-[#FAF8F5] hover:bg-[#EFEBE6] text-[#211C1A] px-4 py-2 rounded-xl text-xs font-semibold border border-[#EFEBE6] transition">Cancel</button>
+                    <button type="submit" class="bg-[#E8590C] hover:bg-[#C74805] text-white font-bold px-4 py-2 rounded-xl text-xs transition shadow-sm">Save Record</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- JAVASCRIPT LOGIC -->
     <script>
         const API_URL = ""; 
@@ -546,6 +583,121 @@
         let activeConflicts = [];
         let highlightConflictIds = []; 
         let modifiedCellTsIds = []; // Slots affected by latest AI action
+
+        // ----------------- IN-APP TOAST & MODAL SYSTEM -----------------
+        function showToast(message, type = "success", durationMs = 4500) {
+            const container = document.getElementById("toast-container");
+            if (!container) return;
+
+            const toast = document.createElement("div");
+            toast.className = `pointer-events-auto flex items-start space-x-3 p-4 rounded-xl shadow-lg border bg-white transition-all duration-300 transform translate-x-full opacity-0 max-w-md ${
+                type === "success"
+                    ? "border-emerald-200 text-emerald-900"
+                    : type === "error"
+                    ? "border-red-200 text-red-900"
+                    : "border-orange-200 text-stone-900"
+            }`;
+
+            const icon = type === "success"
+                ? `<div class="bg-emerald-100 text-[#16A34A] p-2 rounded-lg flex-shrink-0"><i class="fa-solid fa-circle-check text-base"></i></div>`
+                : type === "error"
+                ? `<div class="bg-red-100 text-[#D92D20] p-2 rounded-lg flex-shrink-0"><i class="fa-solid fa-triangle-exclamation text-base"></i></div>`
+                : `<div class="bg-orange-100 text-[#E8590C] p-2 rounded-lg flex-shrink-0"><i class="fa-solid fa-circle-info text-base"></i></div>`;
+
+            toast.innerHTML = `
+                ${icon}
+                <div class="flex-grow text-xs leading-snug pt-0.5 font-medium">
+                    <div class="font-bold font-heading mb-0.5 text-sm text-[#211C1A]">${type === "success" ? "Success" : type === "error" ? "Action Rejected / Error" : "Notice"}</div>
+                    <span>${message}</span>
+                </div>
+                <button class="text-stone-400 hover:text-stone-600 text-sm p-1" onclick="this.parentElement.remove()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            `;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove("translate-x-full", "opacity-0");
+            }, 10);
+
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.classList.add("translate-x-full", "opacity-0");
+                    setTimeout(() => toast.remove(), 300);
+                }
+            }, type === "error" ? 7500 : durationMs);
+        }
+
+        let confirmResolve = null;
+        function showConfirmModal({ title = "Confirm Action", message = "Are you sure you want to proceed?", confirmText = "Confirm", cancelText = "Cancel", isDanger = false }) {
+            return new Promise((resolve) => {
+                confirmResolve = resolve;
+
+                document.getElementById("confirm-modal-title").innerText = title;
+                document.getElementById("confirm-modal-message").innerText = message;
+
+                const confirmBtn = document.getElementById("confirm-modal-btn");
+                confirmBtn.innerText = confirmText;
+                confirmBtn.className = isDanger
+                    ? "bg-[#D92D20] hover:bg-red-700 text-white font-bold px-4 py-2 rounded-xl text-xs transition shadow-sm"
+                    : "bg-[#E8590C] hover:bg-[#C74805] text-white font-bold px-4 py-2 rounded-xl text-xs transition shadow-sm";
+
+                document.getElementById("custom-confirm-modal").classList.remove("hidden");
+            });
+        }
+
+        function handleConfirmResult(result) {
+            document.getElementById("custom-confirm-modal").classList.add("hidden");
+            if (confirmResolve) {
+                confirmResolve(result);
+                confirmResolve = null;
+            }
+        }
+
+        let promptResolve = null;
+        function showPromptModal({ title = "Add Record", fields = [] }) {
+            return new Promise((resolve) => {
+                promptResolve = resolve;
+                document.getElementById("prompt-modal-title").innerText = title;
+                const container = document.getElementById("prompt-modal-fields");
+                container.innerHTML = "";
+
+                fields.forEach(f => {
+                    const div = document.createElement("div");
+                    div.innerHTML = `
+                        <label class="block text-xs font-bold text-[#6B6259] uppercase tracking-wider mb-1">${f.label}</label>
+                        <input type="${f.type || 'text'}" id="prompt-field-${f.name}" value="${f.defaultValue || ''}" class="w-full border border-[#EFEBE6] rounded-xl p-2.5 text-xs bg-white focus:ring-[#E8590C] focus:border-[#E8590C]">
+                    `;
+                    container.appendChild(div);
+                });
+
+                document.getElementById("custom-prompt-modal").classList.remove("hidden");
+            });
+        }
+
+        function handlePromptSubmit(e) {
+            e.preventDefault();
+            document.getElementById("custom-prompt-modal").classList.add("hidden");
+            if (promptResolve) {
+                const result = {};
+                const inputs = document.querySelectorAll("#prompt-modal-fields input");
+                inputs.forEach(input => {
+                    const fieldName = input.id.replace("prompt-field-", "");
+                    result[fieldName] = input.value.trim();
+                });
+                promptResolve(result);
+                promptResolve = null;
+            }
+        }
+
+        function handlePromptCancel() {
+            document.getElementById("custom-prompt-modal").classList.add("hidden");
+            if (promptResolve) {
+                promptResolve(null);
+                promptResolve = null;
+            }
+        }
 
         window.addEventListener("DOMContentLoaded", () => {
             initApp();
@@ -949,16 +1101,23 @@
                 if (!res.ok) throw new Error("Failed to save Master Load record");
 
                 markMasterDataStale();
-                alert(`Saved Master Load row #${id} successfully!`);
+                showToast(`Saved Master Load row #${id} successfully!`, "success");
                 await fetchAllData();
                 renderMasterLoadTable();
             } catch (err) {
-                alert(err.message);
+                showToast(err.message, "error");
             }
         }
 
         async function deleteLoadRow(id) {
-            if (!confirm(`Delete Master Load record #${id}?`)) return;
+            const confirmed = await showConfirmModal({
+                title: "Delete Master Load Entry",
+                message: `Are you sure you want to delete Master Load record #${id}?`,
+                confirmText: "Delete Record",
+                cancelText: "Cancel",
+                isDanger: true
+            });
+            if (!confirmed) return;
 
             try {
                 const res = await fetch(`${API_URL}/api/load-distribution/${id}`, {
@@ -969,41 +1128,48 @@
                 if (!res.ok) throw new Error("Delete failed");
 
                 markMasterDataStale();
+                showToast(`Deleted Master Load record #${id} successfully!`, "success");
                 await fetchAllData();
                 renderMasterLoadTable();
             } catch (err) {
-                alert(err.message);
+                showToast(err.message, "error");
             }
         }
 
         async function saveNewLoadRow() {
-            const fac = prompt("Faculty Name:");
-            if (!fac) return;
-            const sub = prompt("Subject Name:");
-            const sec = prompt("Section Name (e.g. CS-1):");
-            const th = parseFloat(prompt("Theory Hours (TH):", "4.0")) || 0.0;
-            const pr = parseFloat(prompt("Practical Hours (PR):", "2.0")) || 0.0;
+            const result = await showPromptModal({
+                title: "Add Master Load Entry",
+                fields: [
+                    { name: "faculty_name", label: "Faculty Name", defaultValue: "" },
+                    { name: "subject_name", label: "Subject Name", defaultValue: "New Subject" },
+                    { name: "section_name", label: "Section Name (e.g. CS-1)", defaultValue: "CS-1" },
+                    { name: "theory_hours", label: "Theory Hours (TH)", type: "number", defaultValue: "4.0" },
+                    { name: "practical_hours", label: "Practical Hours (PR)", type: "number", defaultValue: "2.0" }
+                ]
+            });
+            if (!result || !result.faculty_name) return;
 
             try {
                 const res = await fetch(`${API_URL}/api/load-distribution`, {
                     method: "POST",
                     headers: getAuthHeaders(),
                     body: JSON.stringify({
-                        faculty_name: fac,
-                        subject_name: sub || "New Subject",
-                        section_name: sec || "CS-1",
-                        theory_hours: th,
-                        practical_hours: pr
+                        faculty_name: result.faculty_name,
+                        subject_name: result.subject_name || "New Subject",
+                        section_name: result.section_name || "CS-1",
+                        theory_hours: parseFloat(result.theory_hours) || 0.0,
+                        practical_hours: parseFloat(result.practical_hours) || 0.0
                     })
                 });
 
                 if (!res.ok) throw new Error("Failed to add record");
 
                 markMasterDataStale();
+                showToast("Added new Master Load record successfully!", "success");
                 await fetchAllData();
                 renderMasterLoadTable();
             } catch (err) {
-                alert(err.message);
+                showToast(err.message, "error");
             }
         }
 
@@ -1420,12 +1586,18 @@
                     renderGrid();
                 }, 6000);
             } catch (err) {
-                alert(err.message);
+                showToast(err.message, "error");
             }
         }
 
         async function handleAutoSolve() {
-            if (!confirm("Are you sure you want to run Google OR-Tools CP-SAT Auto-Generation? This will generate a complete conflict-free schedule from Load Distribution!")) return;
+            const confirmed = await showConfirmModal({
+                title: "Run CP-SAT Timetable Generation",
+                message: "Run Google OR-Tools CP-SAT Auto-Generation? This will generate a complete conflict-free schedule from Load Distribution.",
+                confirmText: "Run Solver",
+                cancelText: "Cancel"
+            });
+            if (!confirmed) return;
 
             const btn = document.getElementById("auto-solve-btn");
             const originalText = btn.innerHTML;
@@ -1443,12 +1615,11 @@
 
                 const data = await res.json();
                 if (data.status === "success") {
-                    // Clear out-of-sync banner immediately upon successful generation
                     isMasterDataStale = false;
                     document.getElementById("master-stale-banner").classList.add("hidden");
                     
                     await fetchAllData();
-                    updateDateVersionOptions(true); // Automatically switch to newly generated date version!
+                    updateDateVersionOptions(true);
                     
                     if (selectedView === "master_load") {
                         selectedView = "section";
@@ -1458,13 +1629,13 @@
                     populateViewItems();
                     fetchConflicts();
 
-                    alert(data.message);
+                    showToast(data.message, "success");
                     appendChatMessage("assistant", `🎉 CP-SAT Solver auto-generated ${data.assignments.length} conflict-free assignments across all branches! View automatically switched to generated timetable (${selectedDateVersion}).`);
                 } else {
-                    alert(data.message);
+                    showToast(data.message, "error");
                 }
             } catch (err) {
-                alert(err.message);
+                showToast(err.message, "error");
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = originalText;
@@ -1583,15 +1754,23 @@
                 }
                 
                 closeModal("assignment-modal");
+                showToast("Assignment saved successfully!", "success");
                 await fetchAllData();
                 fetchConflicts();
             } catch (err) {
-                alert(err.message);
+                showToast(err.message, "error");
             }
         }
 
         async function handleDeleteAssignment(id) {
-            if (!confirm("Are you sure you want to delete this assignment?")) return;
+            const confirmed = await showConfirmModal({
+                title: "Delete Assignment",
+                message: "Are you sure you want to delete this assignment slot?",
+                confirmText: "Delete Slot",
+                cancelText: "Cancel",
+                isDanger: true
+            });
+            if (!confirmed) return;
             
             try {
                 const res = await fetch(`${API_URL}/api/assignments/${id}`, {
@@ -1602,10 +1781,11 @@
                 if (!res.ok) throw new Error("Delete failed");
                 
                 closeModal("assignment-modal");
+                showToast("Assignment slot deleted successfully!", "success");
                 await fetchAllData();
                 fetchConflicts();
             } catch (err) {
-                alert(err.message);
+                showToast(err.message, "error");
             }
         }
 
@@ -1636,7 +1816,7 @@
             const type = document.getElementById("csv-type").value;
             
             if (fileInput.files.length === 0) {
-                alert("Please select a CSV file first.");
+                showToast("Please select a file to upload first.", "error");
                 return;
             }
             
@@ -1659,7 +1839,7 @@
                 csvParsedData = data;
                 renderCSVPreview(data);
             } catch (err) {
-                alert(err.message);
+                showToast(err.message, "error");
             }
         }
 
@@ -1744,7 +1924,6 @@
                 closeModal("csv-modal");
 
                 if (csvParsedData.type === "load_distribution") {
-                    // AUTOMATED SOLVER STEP: Trigger CP-SAT Solver directly on upload!
                     const solveRes = await fetch(`${API_URL}/api/ai/solve`, {
                         method: "POST",
                         headers: getAuthHeaders(),
@@ -1757,12 +1936,12 @@
                         document.getElementById("master-stale-banner").classList.add("hidden");
                         
                         await fetchAllData();
-                        updateDateVersionOptions(true); // Switch to newly generated version!
+                        updateDateVersionOptions(true);
                         
                         switchMainTab("section");
                         fetchConflicts();
 
-                        alert(`🎉 Success! Uploaded Load Distribution and generated ${solveData.assignments.length} conflict-free assignments across all 3 timetables.`);
+                        showToast(`Uploaded Load Distribution and generated ${solveData.assignments.length} conflict-free assignments across all 3 timetables.`, "success");
                         return;
                     }
                 }
@@ -1773,7 +1952,7 @@
                     renderMasterLoadTable();
                 }
             } catch (err) {
-                alert(err.message);
+                showToast(err.message, "error");
             } finally {
                 btn.disabled = false;
                 btn.innerText = origText;
@@ -1781,7 +1960,14 @@
         }
 
         async function handleLegacySeeding() {
-            if (!confirm("Are you sure you want to seed legacy spreadsheet files? This will clear all existing custom timetables!")) return;
+            const confirmed = await showConfirmModal({
+                title: "Seed Legacy Excel Data",
+                message: "Are you sure you want to seed legacy spreadsheet files? This will reset existing timetable data to baseline.",
+                confirmText: "Seed Baseline Data",
+                cancelText: "Cancel",
+                isDanger: true
+            });
+            if (!confirmed) return;
             
             const btn = document.getElementById("seed-btn");
             const btnText = btn.innerHTML;
@@ -1800,12 +1986,12 @@
                 }
                 
                 const data = await res.json();
-                alert(`Seeded database with ${data.count} assignments!`);
+                showToast(`Seeded database with ${data.count} legacy assignments!`, "success");
                 
                 await fetchAllData();
                 fetchConflicts();
             } catch (err) {
-                alert(err.message);
+                showToast(err.message, "error");
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = btnText;
