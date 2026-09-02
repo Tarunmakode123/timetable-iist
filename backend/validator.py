@@ -175,13 +175,16 @@ def validate_all(db: Session):
                                 }
                             })
 
-    # 3. Faculty Over Max Weekly Hours (Deduplicated per Faculty)
-    fac_hours = {}
+    # 3. Faculty Over Max Weekly Hours (Unique Scheduled Timeslots per Faculty)
+    fac_slots = {}
     for a in assignments:
-        fac_hours[a.faculty_id] = fac_hours.get(a.faculty_id, 0) + 1
-        
+        if a.faculty_id:
+            if a.faculty_id not in fac_slots:
+                fac_slots[a.faculty_id] = set()
+            fac_slots[a.faculty_id].add((a.timeslot_id, a.effective_from))
+            
     for f in faculties:
-        hours = fac_hours.get(f.id, 0)
+        hours = len(fac_slots.get(f.id, set()))
         if hours > f.max_weekly_hours:
             conflicts.append({
                 "type": "faculty_over_hours",

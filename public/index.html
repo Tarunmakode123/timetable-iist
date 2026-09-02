@@ -1257,23 +1257,25 @@
             const gridContainer = document.querySelector("#column-grid .overflow-x-auto");
             if (!document.getElementById("grid-body")) {
                 gridContainer.innerHTML = `
-                    <table class="min-w-full border-collapse text-center text-xs table-fixed">
-                        <thead>
-                            <tr class="bg-[#FAF8F5] border-b border-[#EFEBE6]">
-                                <th class="w-24 py-3 font-heading font-bold text-[#6B6259] uppercase tracking-wider text-[11px]">Day / Period</th>
-                                <th class="py-2.5 font-mono-code font-semibold text-[#211C1A]">P1<br><span class="text-[10px] text-[#6B6259] font-sans font-normal">09:30-10:20</span></th>
-                                <th class="py-2.5 font-mono-code font-semibold text-[#211C1A]">P2<br><span class="text-[10px] text-[#6B6259] font-sans font-normal">10:20-11:10</span></th>
-                                <th class="py-2.5 font-mono-code font-semibold text-[#211C1A]">P3<br><span class="text-[10px] text-[#6B6259] font-sans font-normal">11:10-12:00</span></th>
-                                <th class="py-2.5 font-mono-code font-semibold text-[#211C1A]">P4<br><span class="text-[10px] text-[#6B6259] font-sans font-normal">12:00-12:50</span></th>
-                                <th class="py-2.5 font-heading font-bold text-[#E8590C] bg-[#FFE8D6]/40 w-20 text-[11px] uppercase tracking-wider italic">LUNCH<br><span class="text-[10px] text-[#E8590C]/80 font-sans font-normal">12:50-01:40</span></th>
-                                <th class="py-2.5 font-mono-code font-semibold text-[#211C1A]">P5<br><span class="text-[10px] text-[#6B6259] font-sans font-normal">01:40-02:30</span></th>
-                                <th class="py-2.5 font-mono-code font-semibold text-[#211C1A]">P6<br><span class="text-[10px] text-[#6B6259] font-sans font-normal">02:30-03:20</span></th>
-                                <th class="py-2.5 font-mono-code font-semibold text-[#211C1A]">P7<br><span class="text-[10px] text-[#6B6259] font-sans font-normal">03:20-04:10</span></th>
-                            </tr>
-                        </thead>
-                        <tbody id="grid-body" class="bg-white divide-y divide-[#EFEBE6]/60">
-                        </tbody>
-                    </table>
+                    <div class="overflow-x-auto border border-[#EFEBE6] rounded-xl shadow-sm scrollbar-thin">
+                        <table class="w-full min-w-[920px] border-collapse text-center text-xs">
+                            <thead>
+                                <tr class="bg-[#FAF8F5] border-b border-[#EFEBE6]">
+                                    <th class="w-28 py-3.5 pl-3 text-left font-heading font-bold text-[#6B6259] uppercase tracking-wider text-[11px]">Day / Period</th>
+                                    <th class="py-2.5 min-w-[130px] font-mono-code font-semibold text-[#211C1A]">P1<br><span class="text-[10px] text-[#6B6259] font-sans font-normal">09:30-10:20</span></th>
+                                    <th class="py-2.5 min-w-[130px] font-mono-code font-semibold text-[#211C1A]">P2<br><span class="text-[10px] text-[#6B6259] font-sans font-normal">10:20-11:10</span></th>
+                                    <th class="py-2.5 min-w-[130px] font-mono-code font-semibold text-[#211C1A]">P3<br><span class="text-[10px] text-[#6B6259] font-sans font-normal">11:10-12:00</span></th>
+                                    <th class="py-2.5 min-w-[130px] font-mono-code font-semibold text-[#211C1A]">P4<br><span class="text-[10px] text-[#6B6259] font-sans font-normal">12:00-12:50</span></th>
+                                    <th class="py-2.5 font-heading font-bold text-[#E8590C] bg-[#FFE8D6]/40 min-w-[80px] text-[11px] uppercase tracking-wider italic">LUNCH<br><span class="text-[10px] text-[#E8590C]/80 font-sans font-normal">12:50-01:40</span></th>
+                                    <th class="py-2.5 min-w-[130px] font-mono-code font-semibold text-[#211C1A]">P5<br><span class="text-[10px] text-[#6B6259] font-sans font-normal">01:40-02:30</span></th>
+                                    <th class="py-2.5 min-w-[130px] font-mono-code font-semibold text-[#211C1A]">P6<br><span class="text-[10px] text-[#6B6259] font-sans font-normal">02:30-03:20</span></th>
+                                    <th class="py-2.5 min-w-[130px] font-mono-code font-semibold text-[#211C1A]">P7<br><span class="text-[10px] text-[#6B6259] font-sans font-normal">03:20-04:10</span></th>
+                                </tr>
+                            </thead>
+                            <tbody id="grid-body" class="bg-white divide-y divide-[#EFEBE6]/60">
+                            </tbody>
+                        </table>
+                    </div>
                 `;
             }
 
@@ -1289,21 +1291,22 @@
             const activeText = select.options.length > 0 ? select.options[select.selectedIndex].text : "No Selection";
             gridTitle.innerText = `${activeText} - Timetable`;
             
-            document.getElementById("grid-subtitle").innerText = `Filtered by: ${selectedView.toUpperCase()} | Effective Date Version: ${selectedView === "section" ? selectedDateVersion : "General Stack"}`;
+            document.getElementById("grid-subtitle").innerText = `Filtered by: ${selectedView.toUpperCase()} | Active CP-SAT Schedule`;
 
             const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
             
             days.forEach(day => {
                 const tr = document.createElement("tr");
+                tr.className = "min-h-[110px]";
                 const dayTd = document.createElement("td");
-                dayTd.className = "border border-slate-200 font-bold bg-slate-50/80 text-slate-700 py-4 text-xs uppercase tracking-wider";
+                dayTd.className = "border border-[#EFEBE6] font-heading font-bold bg-[#FAF8F5] text-[#211C1A] py-4 pl-3 text-left text-xs uppercase tracking-wider align-middle";
                 dayTd.innerText = day;
                 tr.appendChild(dayTd);
                 
                 for (let p = 1; p <= 8; p++) {
                     if (p === 5) {
                         const lunchTd = document.createElement("td");
-                        lunchTd.className = "border border-slate-200 bg-amber-50/40 text-amber-700 font-bold text-[11px] uppercase tracking-wider italic";
+                        lunchTd.className = "border border-[#EFEBE6] bg-[#FFE8D6]/30 text-[#E8590C] font-heading font-bold text-[11px] uppercase tracking-wider italic align-middle";
                         lunchTd.innerText = "LUNCH";
                         tr.appendChild(lunchTd);
                     }
@@ -1338,48 +1341,54 @@
                     // Handle "Show Conflicts Only" toggle filter
                     if (showOnlyConflicts && cellConflicts.length === 0) {
                         const emptyTd = document.createElement("td");
-                        emptyTd.className = "border border-slate-100 p-2 bg-slate-50/30 opacity-40 min-h-[85px]";
+                        emptyTd.className = "border border-[#EFEBE6] p-2 bg-[#FAF8F5]/30 opacity-40 min-h-[110px]";
                         tr.appendChild(emptyTd);
                         continue;
                     }
                     
                     const cellTd = document.createElement("td");
-                    cellTd.className = "border border-slate-200 p-2 text-xs relative align-top hover:bg-slate-50 transition cursor-pointer min-h-[85px] rounded-sm";
+                    cellTd.className = "border border-[#EFEBE6] p-2 text-xs relative align-top hover:bg-[#FAF8F5]/60 transition cursor-pointer min-h-[110px] h-full";
                     
-                    const isHighlightedConflict = cellConflicts.some(c => highlightConflictIds.includes(c.details.load_entry_id || c.affected_ids[0]));
+                    const isHighlightedConflict = cellConflicts.some(c => highlightConflictIds.includes(c.details?.load_entry_id || c.affected_ids[0]));
                     
-                    // Signature pulse animation for modified cells
                     if (modifiedCellTsIds.includes(tsId)) {
                         cellTd.classList.add("pulse-cell");
                     }
                     
-                    // Clean, elegant thin left-border treatment for conflicts
                     if (cellConflicts.length > 0) {
-                        cellTd.classList.add("border-l-4", "border-l-red-500", "bg-red-50/20");
+                        cellTd.classList.add("border-l-4", "border-l-[#D92D20]", "bg-red-50/20");
                     }
                     if (isHighlightedConflict) {
-                        cellTd.classList.add("ring-2", "ring-orange-500", "ring-offset-1");
+                        cellTd.classList.add("ring-2", "ring-[#E8590C]", "ring-offset-1");
                     }
 
                     if (cellAssignments.length > 0) {
-                        cellAssignments.forEach(a => {
+                        cellAssignments.forEach((a, index) => {
                             const wrapper = document.createElement("div");
-                            wrapper.className = "bg-white p-2 rounded-md border border-slate-200 shadow-sm space-y-1 mb-1.5 relative hover:border-orange-300 transition";
+                            const isStacked = cellAssignments.length > 1;
+                            wrapper.className = `bg-white p-2.5 rounded-xl border border-[#EFEBE6] shadow-sm space-y-1 relative hover:border-[#E8590C] transition text-left ${
+                                isStacked && index > 0 ? "mt-2 pt-2 border-t border-[#EFEBE6]" : ""
+                            }`;
                             
                             const sub = allSubjects.find(s => s.id === a.subject_id);
                             const fac = allFaculty.find(f => f.id === a.faculty_id);
                             const rm = allRooms.find(r => r.id === a.room_id);
                             
-                            const batchBadge = a.batch_id ? `<span class="bg-orange-100 text-orange-800 text-[10px] px-1.5 py-0.5 rounded font-bold mr-1">${a.batch_id.split('_').pop()}</span>` : "";
-                            const hasConflictDot = cellConflicts.length > 0 ? `<span class="inline-block w-2 h-2 rounded-full bg-red-500 mr-1 animate-ping" title="Conflict Detected"></span>` : "";
+                            const batchBadge = a.batch_id ? `<span class="bg-[#FFE8D6] text-[#E8590C] text-[10px] px-1.5 py-0.5 rounded-md font-bold mr-1.5 shadow-2xs">${a.batch_id.split('_').pop()}</span>` : "";
+                            const hasConflictDot = cellConflicts.length > 0 ? `<span class="inline-block w-2 h-2 rounded-full bg-[#D92D20] mr-1.5 animate-pulse" title="Conflict Detected"></span>` : "";
                             
                             wrapper.innerHTML = `
-                                <div class="font-bold text-slate-900 text-xs flex items-center justify-between">
-                                    <span class="truncate">${hasConflictDot}${batchBadge}${sub ? sub.code : a.subject_id}</span>
+                                <div class="font-heading font-bold text-[#211C1A] text-xs leading-tight flex items-start justify-between">
+                                    <span class="truncate">${hasConflictDot}${batchBadge}${sub ? (sub.name || sub.code) : a.subject_id}</span>
                                 </div>
-                                <div class="text-slate-600 text-[11px] font-mono truncate">${fac ? fac.full_name : a.faculty_id}</div>
-                                <div class="flex items-center justify-between pt-0.5">
-                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-100 text-slate-700 border border-slate-200">${rm ? rm.name : a.room_id}</span>
+                                <div class="text-[#6B6259] text-[11px] font-medium truncate mt-1 flex items-center space-x-1">
+                                    <i class="fa-solid fa-user-tie text-[10px] text-[#6B6259]/70"></i>
+                                    <span>${fac ? fac.full_name : a.faculty_id}</span>
+                                </div>
+                                <div class="mt-1.5 flex items-center justify-between">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-mono font-semibold bg-[#FAF8F5] text-[#E8590C] border border-[#FFE8D6]">
+                                        <i class="fa-solid fa-location-dot text-[9px] mr-1 text-[#E8590C]"></i>${rm ? rm.name : a.room_id}
+                                    </span>
                                 </div>
                             `;
                             
