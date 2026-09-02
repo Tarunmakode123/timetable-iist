@@ -69,39 +69,59 @@ def solve_timetable(
 
     generated_assignments = list(pinned_assignments)
 
-def resolve_section(sec_name: str, sections: list) -> Optional[Section]:
-    if not sec_name:
+def resolve_section(sec_name: str, sem_code: str, sections: list) -> Optional[Section]:
+    if not sec_name and not sem_code:
         return None
-    cleaned = sec_name.strip().upper().replace(" ", "").replace("_", "").replace("-", "")
+    cleaned_sec = (sec_name or "").strip().upper().replace(" ", "").replace("_", "").replace("-", "")
+    cleaned_sem = (sem_code or "").strip().upper().replace(" ", "").replace("_", "").replace("-", "")
     
-    if "CS1" in cleaned or "CSE1" in cleaned:
-        sec = next((s for s in sections if "CS-1_2" in s.id or "CS-1" in s.id or "CS_1" in s.id), None)
+    # Determine year suffix: "_2" for 3rd semester / 2nd year (300-level), "_3" for 5th semester / 3rd year (500-level)
+    year_suffix = "_2"
+    if "50" in cleaned_sem or "5" in cleaned_sem or "DE" in cleaned_sem or "OE" in cleaned_sem:
+        year_suffix = "_3"
+    elif "70" in cleaned_sem or "7" in cleaned_sem or "BT205" in cleaned_sem:
+        year_suffix = "_4"
+
+    # Handle CSE-1, CSE-2, CSE-3, CSE section name variations
+    if "CSE1" in cleaned_sec or "CS1" in cleaned_sec or "CS-1" in cleaned_sec:
+        target_id = f"CS-1{year_suffix}"
+        sec = next((s for s in sections if s.id == target_id), None) or next((s for s in sections if s.id.startswith("CS-1")), None)
         if sec: return sec
-    if "CS2" in cleaned or "CSE2" in cleaned:
-        sec = next((s for s in sections if "CS-2_2" in s.id or "CS-2" in s.id or "CS_2" in s.id), None)
+    if "CSE2" in cleaned_sec or "CS2" in cleaned_sec or "CS-2" in cleaned_sec:
+        target_id = f"CS-2{year_suffix}"
+        sec = next((s for s in sections if s.id == target_id), None) or next((s for s in sections if s.id.startswith("CS-2")), None)
         if sec: return sec
-    if "CS3" in cleaned or "CSE3" in cleaned:
-        sec = next((s for s in sections if "CS-3_2" in s.id or "CS-3" in s.id or "CS_3" in s.id), None)
+    if "CSE3" in cleaned_sec or "CS3" in cleaned_sec or "CS-3" in cleaned_sec:
+        target_id = f"CS-3{year_suffix}"
+        sec = next((s for s in sections if s.id == target_id), None) or next((s for s in sections if s.id.startswith("CS-3")), None)
         if sec: return sec
-    if "IT" in cleaned:
-        sec = next((s for s in sections if "IT" in s.id), None)
+    if cleaned_sec in ["CSE", "CS"]:
+        target_id = f"CS-1{year_suffix}"
+        sec = next((s for s in sections if s.id == target_id), None) or next((s for s in sections if s.id.startswith("CS-1")), None)
         if sec: return sec
-    if "AIML" in cleaned:
-        sec = next((s for s in sections if "AIML" in s.id), None)
+    if "IT" in cleaned_sec:
+        target_id = f"IT{year_suffix}"
+        sec = next((s for s in sections if s.id == target_id), None) or next((s for s in sections if s.id.startswith("IT")), None)
         if sec: return sec
-    if "DS" in cleaned or "DATASCIENCE" in cleaned:
-        sec = next((s for s in sections if "DS" in s.id), None)
+    if "AIML" in cleaned_sec:
+        target_id = f"AIML{year_suffix}"
+        sec = next((s for s in sections if s.id == target_id), None) or next((s for s in sections if s.id.startswith("AIML")), None)
         if sec: return sec
-    if "IOT" in cleaned:
-        sec = next((s for s in sections if "IOT" in s.id or "IoT" in s.id), None)
+    if "DS" in cleaned_sec or "DATASCIENCE" in cleaned_sec:
+        target_id = f"DS{year_suffix}"
+        sec = next((s for s in sections if s.id == target_id), None) or next((s for s in sections if s.id.startswith("DS")), None)
         if sec: return sec
-    if "ME" in cleaned or "MECH" in cleaned:
+    if "IOT" in cleaned_sec:
+        target_id = f"IoT{year_suffix}"
+        sec = next((s for s in sections if s.id == target_id), None) or next((s for s in sections if s.id.startswith("IoT")), None)
+        if sec: return sec
+    if "ME" in cleaned_sec or "MECH" in cleaned_sec:
         sec = next((s for s in sections if "ME" in s.id or "Mech" in s.id), None)
         if sec: return sec
         
     for s in sections:
         s_clean = s.id.strip().upper().replace(" ", "").replace("_", "").replace("-", "")
-        if s_clean in cleaned or cleaned in s_clean:
+        if s_clean in cleaned_sec or cleaned_sec in s_clean:
             return s
     return None
 
@@ -181,7 +201,7 @@ def solve_timetable(
                 matched_faculty = f
                 break
 
-        matched_section = resolve_section(entry.section_name, sections)
+        matched_section = resolve_section(entry.section_name, entry.semester, sections)
 
         matched_subject = None
         if entry.subject_name or entry.semester:

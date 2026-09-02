@@ -14,8 +14,10 @@ def process_ai_request(prompt: str, db: Session) -> Dict[str, Any]:
     prompt_lower = prompt.lower().strip()
 
     # ---------------- 1. QUERY MODE (READ-ONLY) ----------------
-    if any(q in prompt_lower for q in ["what", "show", "list", "schedule", "who", "where", "how many"]):
-        return handle_query_intent(prompt_lower, db)
+    if re.search(r'\b(what|show|list|schedule|who|where|how\s+many|is|are|can|check)\b', prompt_lower):
+        # Ensure action verbs don't get misrouted as query mode
+        if not any(a in prompt_lower for a in ["move", "shift", "change", "cancel", "delete", "add", "swap"]):
+            return handle_query_intent(prompt_lower, db)
 
     # ---------------- 2. ACTION MODE (MUTATIONS & EDITS) ----------------
     if any(a in prompt_lower for a in ["move", "shift", "change", "cancel", "delete", "add", "swap"]):
@@ -37,6 +39,49 @@ def handle_query_intent(prompt: str, db: Session) -> Dict[str, Any]:
     rooms = db.query(Room).all()
     assignments = db.query(Assignment).all()
     subjects = db.query(Subject).all()
+
+    # Check for day in query
+    days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
+    target_day = None
+    for d in days:
+        if d in prompt:
+            target_day = d.capitalize()
+            break
+
+    # Check for room availability query
+    matched_room = None
+    for r in rooms:
+        r_clean = r.id.replace("_", "").lower()
+        r_name_clean = r.name.replace("_", "").lower()
+        prompt_clean = prompt.replace(" ", "").replace("_", "").lower()
+        if r_clean in prompt_clean or r_name_clean in prompt_clean:
+            matched_room = r
+            break
+
+    if matched_room and ("free" in prompt or "available" in prompt or "room" in prompt or "vacant" in prompt):
+        room_assigns = [a for a in assignments if a.room_id == matched_room.id]
+        if target_day:
+            room_assigns = [a for a in room_assigns if a.timeslot_id.startswith(target_day)]
+
+        if not room_assigns:
+            return {
+                "mode": "query",
+                "text": f"Room '{matched_room.name}' ({matched_room.type}) is FREE with no scheduled classes{f' on {target_day}' if target_day else ''}.",
+                "data": []
+            }
+        
+        details = []
+        for a in room_assigns:
+            sub = next((s for s in subjects if s.id == a.subject_id), None)
+            sec = next((s for s in sections if s.id == a.section_id), None)
+            fac = next((f for f in faculties if f.id == a.faculty_id), None)
+            details.append(f"• [{a.timeslot_id}] {sub.name if sub else a.subject_id} ({sec.name if sec else a.section_id or 'General'}) taught by {fac.full_name if fac else a.faculty_id}")
+
+        return {
+            "mode": "query",
+            "text": f"Room '{matched_room.name}' has {len(room_assigns)} scheduled class(es){f' on {target_day}' if target_day else ''}:\n" + "\n".join(details),
+            "data": []
+        }
 
     # Check for faculty schedule query
     matched_faculty = None
@@ -188,23 +233,59 @@ def handle_action_intent(prompt: str, db: Session) -> Dict[str, Any]:
 
     # Action 2: Move / Shift class
     if "move" in prompt or "shift" in prompt or "change" in prompt:
-        # Find current assignment
-        matching = [a for a in assignments if (target_fac and a.faculty_id == target_fac.id) or (target_sec and a.section_id == target_sec.id)]
-        if not matching:
-            matching = assignments[:1] # Fallback to first assignment if unspecified
+        # Advanced regex extraction for explicit "from ... to ..."
+        to_slot_match = re.search(r'\bto\s+([a-zA-Z]+)?(?:\s*(?:period|p)\s*|\s*[_]?)([1-8])\b', prompt, re.IGNORECASE)
+        from_slot_match = re.search(r'\bfrom\s+([a-zA-Z]+)?(?:\s*(?:period|p)\s*|\s*[_]?)([1-8])\b', prompt, re.IGNORECASE)
+        
+        # Check for subject name in prompt
+        matched_sub = None
+        for sb in db.query(Subject).all():
+            if sb.name.lower() in prompt or sb.code.lower() in prompt:
+                matched_sub = sb
+                break
+                
+        matching = [a for a in assignments if (target_fac and a.faculty_id == target_fac.id) or (target_sec and (a.section_id == target_sec.id or (a.batch_id and target_sec.id in a.batch_id)))]
+        if matched_sub:
+            sub_matches = [a for a in matching if a.subject_id == matched_sub.id]
+            if sub_matches:
+                matching = sub_matches
+                
+        if from_slot_match:
+            from_day = from_slot_match.group(1).capitalize() if from_slot_match.group(1) else (found_days[0] if found_days else "Monday")
+            from_period = from_slot_match.group(2)
+            from_ts = f"{from_day}_{from_period}"
+            from_matches = [a for a in matching if a.timeslot_id == from_ts]
+            if from_matches:
+                source_assign = from_matches[0]
+            else:
+                source_assign = matching[0] if matching else None
+        else:
+            source_assign = matching[0] if matching else (assignments[0] if assignments else None)
 
-        if not matching:
-            return {"mode": "action", "status": "error", "text": "No assignments available to move.", "diff": None}
+        if not source_assign:
+            return {"mode": "action", "status": "error", "text": "No matching assignment found to move.", "diff": None}
 
-        source_assign = matching[0]
-
-        # Determine target timeslot
-        if len(found_days) >= 2 and len(periods) >= 2:
+        # Target slot determination
+        if to_slot_match:
+            to_day = to_slot_match.group(1).capitalize() if to_slot_match.group(1) else (found_days[0] if found_days else source_assign.timeslot_id.split("_")[0])
+            to_period = to_slot_match.group(2)
+            new_ts = f"{to_day}_{to_period}"
+        elif len(found_days) >= 2 and len(periods) >= 2:
             new_ts = f"{found_days[1]}_{periods[1]}"
         elif len(found_days) >= 1 and len(periods) >= 1:
             new_ts = f"{found_days[0]}_{periods[0]}"
         else:
-            new_ts = "Tuesday_3" # Default proposed slot
+            new_ts = "Tuesday_3"
+
+        # Check if target slot is lunch period 5 (12:50 - 13:40)
+        if new_ts.endswith("_5"):
+            return {
+                "mode": "action",
+                "status": "conflict",
+                "text": f"Cannot move class to [{new_ts}]: Period 5 (12:50 - 13:40) is reserved for the institutional lunch break.",
+                "alternatives": [f"{new_ts.split('_')[0]}_4", f"{new_ts.split('_')[0]}_6"],
+                "diff": None
+            }
 
         # Construct proposed change
         proposed_assign = {

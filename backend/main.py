@@ -70,10 +70,12 @@ from fastapi.responses import JSONResponse
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
-    import traceback
+    import os, traceback
+    is_dev = os.environ.get("ENVIRONMENT") == "development"
+    detail_msg = f"Internal Server Error: {str(exc)}\n{traceback.format_exc()}" if is_dev else "Internal Server Error"
     return JSONResponse(
         status_code=500,
-        content={"detail": f"Internal Server Error: {str(exc)}\n{traceback.format_exc()}"}
+        content={"detail": detail_msg}
     )
 
 # Dependency to get db session

@@ -27,7 +27,9 @@ class VercelASGIAdapter:
 
     async def __call__(self, scope, receive, send):
         if scope.get("type") == "http":
+            is_dev = os.environ.get("ENVIRONMENT") == "development"
             if INIT_ERROR:
+                body_content = INIT_ERROR if is_dev else "Internal Server Error"
                 await send({
                     "type": "http.response.start",
                     "status": 500,
@@ -35,7 +37,7 @@ class VercelASGIAdapter:
                 })
                 await send({
                     "type": "http.response.body",
-                    "body": INIT_ERROR.encode("utf-8")
+                    "body": body_content.encode("utf-8")
                 })
                 return
 
@@ -53,7 +55,8 @@ class VercelASGIAdapter:
             try:
                 await self.inner_app(scope, receive, send)
             except Exception as exc:
-                err_text = f"VERCEL RUNTIME EXECUTION EXCEPTION:\n{str(exc)}\n\nFULL STACK TRACEBACK:\n{traceback.format_exc()}"
+                err_text = f"VERCEL RUNTIME EXECUTION EXCEPTION:\n{str(exc)}\n\nFULL STACK TRACEBACK:\n{traceback.format_exc()}" if is_dev else "Internal Server Error"
+                print(f"Server Error: {exc}")
                 await send({
                     "type": "http.response.start",
                     "status": 500,

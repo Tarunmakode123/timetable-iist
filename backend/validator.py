@@ -196,6 +196,21 @@ def validate_all(db: Session):
                 }
             })
 
+    # 4. Lunch Period Assignment Conflict (Period 5 - 12:50 to 13:40)
+    for a in assignments:
+        if a.timeslot_id.endswith("_5"):
+            conflicts.append({
+                "type": "LUNCH_PERIOD_VIOLATION",
+                "severity": "hard",
+                "message": f"Assignment #{a.id} ({a.subject_id}) is invalidly scheduled during Period 5 lunch break ({a.timeslot_id}).",
+                "affected_ids": [a.id],
+                "details": {
+                    "assignment_id": a.id,
+                    "timeslot_id": a.timeslot_id,
+                    "subject_id": a.subject_id
+                }
+            })
+
     # 4. Load Distribution Reconciliation (Deduplicated per Entry)
     for entry in load_entries:
         matched_faculty = None
