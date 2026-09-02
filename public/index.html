@@ -112,15 +112,15 @@
                     Sign in to your account
                 </p>
             </div>
-            <form class="mt-8 space-y-6" id="login-form" action="javascript:void(0);" method="POST">
+            <form class="mt-8 space-y-6" id="login-form" onsubmit="handleLogin(event); return false;">
                 <div class="rounded-md shadow-sm -space-y-px">
                     <div>
                         <label for="username" class="sr-only">Username</label>
-                        <input id="username" name="username" type="text" required onkeydown="if(event.key==='Enter'){event.preventDefault();handleLogin(event);}" class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm" placeholder="Username (e.g. admin)">
+                        <input id="username" name="username" type="text" required class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm" placeholder="Username (e.g. admin)">
                     </div>
                     <div>
                         <label for="password" class="sr-only">Password</label>
-                        <input id="password" name="password" type="password" required onkeydown="if(event.key==='Enter'){event.preventDefault();handleLogin(event);}" class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm" placeholder="Password">
+                        <input id="password" name="password" type="password" required class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-orange-500 focus:border-orange-500 focus:z-10 sm:text-sm" placeholder="Password">
                     </div>
                 </div>
 
@@ -131,7 +131,7 @@
                 <div id="login-error" class="hidden text-red-500 text-sm text-center"></div>
 
                 <div>
-                    <button type="button" id="login-submit-btn" onclick="handleLogin(event)" class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500">
+                    <button type="submit" id="login-submit-btn" class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500">
                         Sign In
                     </button>
                 </div>
