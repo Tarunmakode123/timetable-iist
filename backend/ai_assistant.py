@@ -46,43 +46,54 @@ def find_best_faculty_match(prompt: str, faculties: list):
         if clean_full_name and len(clean_full_name) >= 3 and clean_full_name in prompt_clean:
             score += 150
             
-        # 2. Clean ID match (e.g. shweta agrawal in prompt)
+        # 2. Clean ID match
         if clean_id and len(clean_id) >= 3 and clean_id in prompt_clean:
             score += 120
             
-        # 3. Word overlap score
-        f_name_words = set(re.findall(r'\w+', clean_full_name))
-        ignored = {"dr", "mr", "ms", "mrs", "prof", "schedule", "of", "the", "for", "give", "me", "full", "show", "list", "timetable", "class", "classes"}
-        matching_words = (prompt_words & f_name_words) - ignored
-        score += len(matching_words) * 30
+        # 3. Individual token matches (e.g. shweta, agrawal, rakesh, verma)
+        name_tokens = [t for t in clean_full_name.split() if len(t) >= 3 and t not in ['dr', 'mr', 'ms', 'mrs', 'prof']]
+        matched_tokens = [t for t in name_tokens if t in prompt_words or t in prompt_clean]
+        score += len(matched_tokens) * 40
         
-        # 4. Exact word match for initials (only if initials length >= 2)
-        if f.known_initials and len(f.known_initials.strip()) >= 2:
-            init_pattern = r'\b' + re.escape(f.known_initials.strip().lower()) + r'\b'
-            if re.search(init_pattern, prompt_clean):
-                score += 50
-                
         if score > best_score and score >= 30:
             best_score = score
             best_faculty = f
             
     return best_faculty
 
-ACTION_KEYWORDS = ["move", "shift", "change", "cancel", "delete", "add", "swap", "edit", "put", "set", "assign", "place", "insert"]
+def find_best_section_match(prompt: str, sections: list):
+    prompt_clean = prompt.lower().replace(" ", "").replace("-", "").replace("_", "")
+    for s in sections:
+        clean_id = s.id.lower().replace(" ", "").replace("-", "").replace("_", "")
+        clean_name = s.name.lower().replace(" ", "").replace("-", "").replace("_", "")
+        if clean_id in prompt_clean or clean_name in prompt_clean:
+            return s
+        # Fuzzy shorthand like cs1 -> cs-1_2
+        if "cs1" in prompt_clean and "cs-1" in s.name.lower():
+            return s
+        if "iot" in prompt_clean and "iot" in s.name.lower():
+            return s
+        if "aiml" in prompt_clean and "aiml" in s.name.lower():
+            return s
+    return None
+
+ACTION_KEYWORDS = ["move", "shift", "change", "cancel", "delete", "add", "swap", "edit", "put", "set", "assign", "place", "insert", "relocate", "transfer", "allocate", "reschedule", "replace", "fix", "update", "arrange"]
 
 def process_ai_request(prompt: str, db: Session) -> Dict[str, Any]:
     prompt_lower = prompt.lower().strip()
 
-    # 1. QUERY MODE (READ-ONLY)
-    if re.search(r'\b(what|show|list|schedule|who|where|how\s+many|is|are|can|check|give)\b', prompt_lower):
-        if not any(a in prompt_lower for a in ACTION_KEYWORDS):
-            return handle_query_intent(prompt_lower, db)
+    # 1. Broad Action Detection: Verb matched OR explicit mutation request (day + period + entity)
+    is_action = any(a in prompt_lower for a in ACTION_KEYWORDS)
+    days_map = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
+    found_days = [d.capitalize() for d in days_map if d in prompt_lower]
+    periods = re.findall(r'\b(?:period|p)\s*([1-8])\b', prompt_lower) or re.findall(r'\b([1-8])\b', prompt_lower)
+    
+    if not is_action and found_days and periods and any(k in prompt_lower for k in ["dbms", "python", "lab", "eees", "al304", "cs501", "shweta", "rakesh", "reshu", "richa"]):
+        is_action = True
 
-    # 2. ACTION MODE (MUTATIONS & EDITS)
-    if any(a in prompt_lower for a in ACTION_KEYWORDS):
+    if is_action:
         return handle_action_intent(prompt_lower, db)
 
-    # Fallback search as query mode
     return handle_query_intent(prompt_lower, db)
 
 def handle_query_intent(prompt: str, db: Session) -> Dict[str, Any]:
@@ -109,7 +120,7 @@ def handle_query_intent(prompt: str, db: Session) -> Dict[str, Any]:
             matched_room = r
             break
 
-    if matched_room and ("free" in prompt or "available" in prompt or "vacant" in prompt):
+    if matched_room:
         room_assigns = [a for a in assignments if a.room_id == matched_room.id]
         if target_day:
             room_assigns = [a for a in room_assigns if a.timeslot_id.startswith(target_day)]
@@ -135,7 +146,7 @@ def handle_query_intent(prompt: str, db: Session) -> Dict[str, Any]:
             "mode": "query",
             "target_type": "room",
             "target_id": matched_room.id,
-            "text": f"Room '{matched_room.name}' has {len(room_assigns)} scheduled class(es){f' on {target_day}' if target_day else ''}:\n" + "\n".join(details),
+            "text": f"Room '{matched_room.name}' has {len(room_assigns)} scheduled class(es)" + (f" on {target_day}" if target_day else "") + ":\n" + "\n".join(details),
             "data": []
         }
 
@@ -184,12 +195,7 @@ def handle_query_intent(prompt: str, db: Session) -> Dict[str, Any]:
         }
 
     # 3. Check for section schedule query
-    matched_section = None
-    for s in sections:
-        clean_s = s.id.replace("_", "").replace("-", "").lower()
-        if clean_s in prompt.replace(" ", "").replace("-", ""):
-            matched_section = s
-            break
+    matched_section = find_best_section_match(prompt, sections)
 
     if matched_section:
         sec_assigns = [a for a in assignments if a.section_id == matched_section.id]
@@ -204,7 +210,7 @@ def handle_query_intent(prompt: str, db: Session) -> Dict[str, Any]:
                 sub = next((sb for sb in subjects if sb.id == a.subject_id), None)
                 fac = next((fc for fc in faculties if fc.id == a.faculty_id), None)
                 ts_label = format_timeslot_label(a.timeslot_id)
-                summary_text += f"\n• {ts_label}: {sub.code if sub else a.subject_id} by {fac.full_name if fac else a.faculty_id} in {a.room_id}"
+                summary_text += f"\n• {ts_label}: {sub.name if sub else a.subject_id} by {fac.full_name if fac else a.faculty_id} in {a.room_id}"
 
         return {
             "mode": "query",
@@ -214,10 +220,31 @@ def handle_query_intent(prompt: str, db: Session) -> Dict[str, Any]:
             "data": []
         }
 
-    # General overview response
+    # 4. Check for Subject Query (e.g. "who teaches AL304?")
+    matched_sub = None
+    for sb in subjects:
+        if sb.code.lower() in prompt or sb.name.lower() in prompt:
+            matched_sub = sb
+            break
+            
+    if matched_sub:
+        sub_assigns = [a for a in assignments if a.subject_id == matched_sub.id]
+        if sub_assigns:
+            summary_text = f"Subject '{matched_sub.name}' ({matched_sub.code}) Scheduling Details:"
+            for a in sub_assigns[:10]:
+                fac = next((fc for fc in faculties if fc.id == a.faculty_id), None)
+                sec = next((sc for sc in sections if sc.id == a.section_id), None)
+                summary_text += f"\n• {format_timeslot_label(a.timeslot_id)}: Taught by {fac.full_name if fac else a.faculty_id} for Section {sec.name if sec else a.section_id} in {a.room_id}"
+            return {
+                "mode": "query",
+                "text": summary_text,
+                "data": []
+            }
+
+    # General overview fallback guidance
     return {
         "mode": "query",
-        "text": f"The dataset currently has {len(assignments)} assignments across {len(faculties)} faculty members, {len(sections)} sections, and {len(rooms)} rooms.",
+        "text": f"I am your IIST Timetable Assistant! Currently tracking {len(assignments)} assignments across {len(faculties)} faculty members, {len(sections)} sections, and {len(rooms)} rooms.\n\nYou can ask for any schedule (e.g. 'show Dr. Shweta Agrawal schedule' or 'is LAB1 free on Monday') or request any timetable edit (e.g. 'put DBMS on Wednesday P1 for Shweta Agrawal').",
         "data": []
     }
 
@@ -231,22 +258,16 @@ def handle_action_intent(prompt: str, db: Session) -> Dict[str, Any]:
     # Extract days and period numbers from prompt
     days_map = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
     found_days = [d.capitalize() for d in days_map if d in prompt.lower()]
-    periods = re.findall(r'\b(?:period|p)\s*([1-8])\b', prompt, re.IGNORECASE)
+    periods = re.findall(r'\b(?:period|p)\s*([1-8])\b', prompt.lower())
     if not periods:
-        periods = re.findall(r'\b([1-8])\b', prompt)
+        periods = re.findall(r'\b([1-8])\b', prompt.lower())
 
     # Match faculty or section mentioned
     target_fac = find_best_faculty_match(prompt, faculties)
-
-    target_sec = None
-    for s in sections:
-        clean_s = s.id.replace("_", "").replace("-", "").lower()
-        if clean_s in prompt.replace(" ", "").replace("-", ""):
-            target_sec = s
-            break
+    target_sec = find_best_section_match(prompt, sections)
 
     # Action 1: Cancel / Delete class
-    if "cancel" in prompt or "delete" in prompt:
+    if any(k in prompt for k in ["cancel", "delete", "remove", "drop"]):
         matching = [a for a in assignments if (target_fac and a.faculty_id == target_fac.id) or (target_sec and a.section_id == target_sec.id)]
         if found_days and periods:
             target_ts = f"{found_days[0]}_{periods[0]}"
@@ -273,7 +294,7 @@ def handle_action_intent(prompt: str, db: Session) -> Dict[str, Any]:
         }
 
     # Action 2: Move / Shift / Edit / Put / Set / Assign class
-    if any(k in prompt for k in ["move", "shift", "change", "put", "edit", "set", "assign", "place", "insert"]):
+    if any(k in prompt for k in ["move", "shift", "change", "put", "edit", "set", "assign", "place", "insert", "relocate", "transfer", "allocate", "reschedule", "replace", "fix", "update", "arrange"]):
         # Advanced regex extraction for explicit "from ... to ..."
         to_slot_match = re.search(r'\bto\s+([a-zA-Z]+)?(?:\s*(?:period|p)\s*|\s*[_]?)([1-8])\b', prompt, re.IGNORECASE)
         from_slot_match = re.search(r'\bfrom\s+([a-zA-Z]+)?(?:\s*(?:period|p)\s*|\s*[_]?)([1-8])\b', prompt, re.IGNORECASE)
