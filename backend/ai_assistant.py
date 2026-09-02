@@ -4,43 +4,92 @@ from sqlalchemy.orm import Session
 from backend.database import Faculty, Subject, Section, Batch, Room, TimeSlot, Assignment
 from backend.validator import validate_all
 
+TIMESLOT_LABEL_MAP = {
+    "1": "P1 (09:30 - 10:20 AM)",
+    "2": "P2 (10:20 - 11:10 AM)",
+    "3": "P3 (11:10 AM - 12:00 PM)",
+    "4": "P4 (12:00 - 12:50 PM)",
+    "5": "Lunch (12:50 - 01:40 PM)",
+    "6": "P5 (01:40 - 02:30 PM)",
+    "7": "P6 (02:30 - 03:20 PM)",
+    "8": "P7 (03:20 - 04:10 PM)"
+}
+
+def format_timeslot_label(ts_id: str) -> str:
+    if not ts_id or "_" not in ts_id:
+        return ts_id or ""
+    parts = ts_id.split("_")
+    day = parts[0]
+    period_num = parts[1]
+    time_label = TIMESLOT_LABEL_MAP.get(period_num, f"Period {period_num}")
+    return f"{day}, {time_label}"
+
+def format_clean_name(name: str) -> str:
+    if not name:
+        return ""
+    return name.replace("_", " ").title()
+
+def find_best_faculty_match(prompt: str, faculties: list):
+    prompt_clean = prompt.lower()
+    prompt_words = set(re.findall(r'\w+', prompt_clean))
+    
+    best_faculty = None
+    best_score = 0
+    
+    for f in faculties:
+        score = 0
+        full_name = f.full_name or ""
+        clean_full_name = re.sub(r'^(dr|mr|ms|mrs|prof)\.?\s*', '', full_name.lower()).strip()
+        clean_id = f.id.replace("_", " ").lower().strip()
+        
+        # 1. Exact full name match (without Dr/Mr/Ms prefix)
+        if clean_full_name and len(clean_full_name) >= 3 and clean_full_name in prompt_clean:
+            score += 150
+            
+        # 2. Clean ID match (e.g. shweta agrawal in prompt)
+        if clean_id and len(clean_id) >= 3 and clean_id in prompt_clean:
+            score += 120
+            
+        # 3. Word overlap score
+        f_name_words = set(re.findall(r'\w+', clean_full_name))
+        ignored = {"dr", "mr", "ms", "mrs", "prof", "schedule", "of", "the", "for", "give", "me", "full", "show", "list", "timetable", "class", "classes"}
+        matching_words = (prompt_words & f_name_words) - ignored
+        score += len(matching_words) * 30
+        
+        # 4. Exact word match for initials (only if initials length >= 2)
+        if f.known_initials and len(f.known_initials.strip()) >= 2:
+            init_pattern = r'\b' + re.escape(f.known_initials.strip().lower()) + r'\b'
+            if re.search(init_pattern, prompt_clean):
+                score += 50
+                
+        if score > best_score and score >= 30:
+            best_score = score
+            best_faculty = f
+            
+    return best_faculty
+
 def process_ai_request(prompt: str, db: Session) -> Dict[str, Any]:
-    """
-    AI Assistant & Intent Pipeline.
-    Parses natural language requests into structured intents (query mode vs action mode).
-    Validates actions against the standalone validator before returning a diff or solver alternatives.
-    Never mutates data directly without user preview/confirmation.
-    """
     prompt_lower = prompt.lower().strip()
 
-    # ---------------- 1. QUERY MODE (READ-ONLY) ----------------
-    if re.search(r'\b(what|show|list|schedule|who|where|how\s+many|is|are|can|check)\b', prompt_lower):
-        # Ensure action verbs don't get misrouted as query mode
+    # 1. QUERY MODE (READ-ONLY)
+    if re.search(r'\b(what|show|list|schedule|who|where|how\s+many|is|are|can|check|give)\b', prompt_lower):
         if not any(a in prompt_lower for a in ["move", "shift", "change", "cancel", "delete", "add", "swap"]):
             return handle_query_intent(prompt_lower, db)
 
-    # ---------------- 2. ACTION MODE (MUTATIONS & EDITS) ----------------
+    # 2. ACTION MODE (MUTATIONS & EDITS)
     if any(a in prompt_lower for a in ["move", "shift", "change", "cancel", "delete", "add", "swap"]):
         return handle_action_intent(prompt_lower, db)
 
-    # Fallback response for unspecified prompts
-    return {
-        "mode": "chat",
-        "text": f"I received your request: '{prompt}'. You can ask me questions about schedules (e.g. 'What is Ms. Vimmy's Tuesday schedule?') or request changes (e.g. 'Move Dr. Neeraj's Monday P2 class to Tuesday P3').",
-        "diff": None
-    }
+    # Fallback search as query mode
+    return handle_query_intent(prompt_lower, db)
 
 def handle_query_intent(prompt: str, db: Session) -> Dict[str, Any]:
-    """
-    Structured DB query handler for read-only questions.
-    """
     faculties = db.query(Faculty).all()
     sections = db.query(Section).all()
     rooms = db.query(Room).all()
     assignments = db.query(Assignment).all()
     subjects = db.query(Subject).all()
 
-    # Check for day in query
     days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
     target_day = None
     for d in days:
@@ -48,7 +97,7 @@ def handle_query_intent(prompt: str, db: Session) -> Dict[str, Any]:
             target_day = d.capitalize()
             break
 
-    # Check for room availability query
+    # 1. Check for room availability / occupancy query
     matched_room = None
     for r in rooms:
         r_clean = r.id.replace("_", "").lower()
@@ -58,7 +107,7 @@ def handle_query_intent(prompt: str, db: Session) -> Dict[str, Any]:
             matched_room = r
             break
 
-    if matched_room and ("free" in prompt or "available" in prompt or "room" in prompt or "vacant" in prompt):
+    if matched_room and ("free" in prompt or "available" in prompt or "vacant" in prompt):
         room_assigns = [a for a in assignments if a.room_id == matched_room.id]
         if target_day:
             room_assigns = [a for a in room_assigns if a.timeslot_id.startswith(target_day)]
@@ -66,6 +115,8 @@ def handle_query_intent(prompt: str, db: Session) -> Dict[str, Any]:
         if not room_assigns:
             return {
                 "mode": "query",
+                "target_type": "room",
+                "target_id": matched_room.id,
                 "text": f"Room '{matched_room.name}' ({matched_room.type}) is FREE with no scheduled classes{f' on {target_day}' if target_day else ''}.",
                 "data": []
             }
@@ -75,30 +126,19 @@ def handle_query_intent(prompt: str, db: Session) -> Dict[str, Any]:
             sub = next((s for s in subjects if s.id == a.subject_id), None)
             sec = next((s for s in sections if s.id == a.section_id), None)
             fac = next((f for f in faculties if f.id == a.faculty_id), None)
-            details.append(f"• [{a.timeslot_id}] {sub.name if sub else a.subject_id} ({sec.name if sec else a.section_id or 'General'}) taught by {fac.full_name if fac else a.faculty_id}")
+            ts_label = format_timeslot_label(a.timeslot_id)
+            details.append(f"• {ts_label}: {sub.name if sub else a.subject_id} ({sec.name if sec else a.section_id or 'General'}) taught by {fac.full_name if fac else a.faculty_id}")
 
         return {
             "mode": "query",
+            "target_type": "room",
+            "target_id": matched_room.id,
             "text": f"Room '{matched_room.name}' has {len(room_assigns)} scheduled class(es){f' on {target_day}' if target_day else ''}:\n" + "\n".join(details),
             "data": []
         }
 
-    # Check for faculty schedule query
-    matched_faculty = None
-    for f in faculties:
-        if (f.known_initials and f.known_initials.lower() in prompt) or \
-           (f.full_name.lower() in prompt) or \
-           (f.id.lower() in prompt):
-            matched_faculty = f
-            break
-
-    # Check for day in query
-    days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
-    target_day = None
-    for d in days:
-        if d in prompt:
-            target_day = d.capitalize()
-            break
+    # 2. Check for faculty schedule query
+    matched_faculty = find_best_faculty_match(prompt, faculties)
 
     if matched_faculty:
         fac_assigns = [a for a in assignments if a.faculty_id == matched_faculty.id]
@@ -108,6 +148,8 @@ def handle_query_intent(prompt: str, db: Session) -> Dict[str, Any]:
         if not fac_assigns:
             return {
                 "mode": "query",
+                "target_type": "faculty",
+                "target_id": matched_faculty.id,
                 "text": f"Faculty '{matched_faculty.full_name}' has no scheduled classes{f' on {target_day}' if target_day else ''}.",
                 "data": []
             }
@@ -116,24 +158,30 @@ def handle_query_intent(prompt: str, db: Session) -> Dict[str, Any]:
         for a in fac_assigns:
             sub = next((s for s in subjects if s.id == a.subject_id), None)
             sec = next((s for s in sections if s.id == a.section_id), None)
+            rm = next((r for r in rooms if r.id == a.room_id), None)
             details.append({
-                "timeslot": a.timeslot_id,
-                "subject": sub.name if sub else a.subject_id,
-                "section": sec.name if sec else a.section_id,
-                "room": a.room_id
+                "timeslot_id": a.timeslot_id,
+                "timeslot": format_timeslot_label(a.timeslot_id),
+                "subject": sub.name if sub else format_clean_name(a.subject_id),
+                "section": sec.name if sec else format_clean_name(a.section_id),
+                "room": rm.name if rm else format_clean_name(a.room_id),
+                "batch": a.batch_id.split("_").pop() if a.batch_id else ""
             })
 
-        summary_text = f"Found {len(details)} class(es) for '{matched_faculty.full_name}'{f' on {target_day}' if target_day else ''}:"
+        summary_text = f"Full Weekly Schedule for '{matched_faculty.full_name}' ({len(details)} class(es)){f' on {target_day}' if target_day else ''}:"
         for d in details:
-            summary_text += f"\n• [{d['timeslot']}] {d['subject']} in {d['room']} ({d['section'] or 'General'})"
+            batch_str = f" [Batch {d['batch']}]" if d['batch'] else ""
+            summary_text += f"\n• {d['timeslot']}: {d['subject']}{batch_str} in {d['room']} ({d['section'] or 'General Section'})"
 
         return {
             "mode": "query",
+            "target_type": "faculty",
+            "target_id": matched_faculty.id,
             "text": summary_text,
             "data": details
         }
 
-    # Check for section schedule query
+    # 3. Check for section schedule query
     matched_section = None
     for s in sections:
         clean_s = s.id.replace("_", "").replace("-", "").lower()
@@ -153,10 +201,13 @@ def handle_query_intent(prompt: str, db: Session) -> Dict[str, Any]:
             for a in sec_assigns:
                 sub = next((sb for sb in subjects if sb.id == a.subject_id), None)
                 fac = next((fc for fc in faculties if fc.id == a.faculty_id), None)
-                summary_text += f"\n• [{a.timeslot_id}] {sub.code if sub else a.subject_id} by {fac.full_name if fac else a.faculty_id} in {a.room_id}"
+                ts_label = format_timeslot_label(a.timeslot_id)
+                summary_text += f"\n• {ts_label}: {sub.code if sub else a.subject_id} by {fac.full_name if fac else a.faculty_id} in {a.room_id}"
 
         return {
             "mode": "query",
+            "target_type": "section",
+            "target_id": matched_section.id,
             "text": summary_text,
             "data": []
         }
@@ -169,33 +220,14 @@ def handle_query_intent(prompt: str, db: Session) -> Dict[str, Any]:
     }
 
 def handle_action_intent(prompt: str, db: Session) -> Dict[str, Any]:
-    """
-    Action / Edit intent handler with strict validation and diff construction.
-    """
     faculties = db.query(Faculty).all()
     sections = db.query(Section).all()
-    rooms = db.query(Room).all()
     assignments = db.query(Assignment).all()
+    rooms = db.query(Room).all()
     timeslots = db.query(TimeSlot).all()
 
-    # Parse target timeslot
-    days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
-    found_days = [d.capitalize() for d in days if d in prompt]
-    found_periods = re.findall(r'\b(?:period|p)\s*([1-8])\b|\b([1-8])\b', prompt)
-    periods = []
-    for p in found_periods:
-        val = p[0] or p[1]
-        if val and val not in periods:
-            periods.append(val)
-
     # Match faculty or section mentioned
-    target_fac = None
-    for f in faculties:
-        if (f.known_initials and f.known_initials.lower() in prompt) or \
-           (f.full_name.lower() in prompt) or \
-           (f.id.lower() in prompt):
-            target_fac = f
-            break
+    target_fac = find_best_faculty_match(prompt, faculties)
 
     target_sec = None
     for s in sections:
