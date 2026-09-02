@@ -44,6 +44,56 @@
             border-left: 3px solid #D92D20 !important;
             background-color: rgba(254, 228, 226, 0.4) !important;
         }
+
+        /* Official Print & PDF Export Styling */
+        @media print {
+            header, sidebar, #column-sidebar, #column-ai, .admin-only, #grid-status-banner, #date-version-panel, button, form, nav {
+                display: none !important;
+            }
+            body {
+                background-color: #FFFFFF !important;
+                color: #000000 !important;
+                font-family: Arial, Helvetica, sans-serif !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            #main-dashboard {
+                display: block !important;
+            }
+            #column-grid {
+                width: 100% !important;
+                max-width: 100% !important;
+                border: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+            }
+            .print-document-header {
+                display: block !important;
+                text-align: center;
+                border-bottom: 2px solid #000;
+                padding-bottom: 12px;
+                margin-bottom: 16px;
+            }
+            table {
+                border-collapse: collapse !important;
+                width: 100% !important;
+            }
+            th, td {
+                border: 1px solid #333333 !important;
+                padding: 8px 6px !important;
+                color: #000000 !important;
+                background: none !important;
+            }
+            th {
+                background-color: #F0F0F0 !important;
+                font-weight: bold !important;
+            }
+            .pulse-cell, .conflict-accent {
+                animation: none !important;
+                border: 1px solid #333333 !important;
+                background: none !important;
+            }
+        }
     </style>
 </head>
 <body class="text-[#211C1A] antialiased">
@@ -115,7 +165,7 @@
         <!-- Main Body -->
         <main class="flex-grow max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col xl:flex-row gap-6">
             <!-- Column 1: Sidebar Controls & Conflicts -->
-            <div class="w-full xl:w-1/5 flex flex-col gap-6">
+            <div id="column-sidebar" class="w-full xl:w-1/5 flex flex-col gap-6">
                 <!-- Controls Card -->
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-[#EFEBE6] space-y-4">
                     <h3 class="font-heading font-bold text-base text-[#211C1A] border-b border-[#FAF8F5] pb-2.5">Schedule View</h3>
@@ -126,6 +176,7 @@
                             <option value="section">Section-wise View</option>
                             <option value="faculty">Faculty-wise View</option>
                             <option value="room">Room-wise View</option>
+                            <option value="master_load">Master Load Distribution Data</option>
                         </select>
                     </div>
 
@@ -190,7 +241,19 @@
             </div>
 
             <!-- Column 2: Main Grid View -->
-            <div class="flex-grow xl:w-3/5 bg-white p-6 rounded-2xl shadow-sm border border-[#EFEBE6] flex flex-col">
+            <div id="column-grid" class="flex-grow xl:w-3/5 bg-white p-6 rounded-2xl shadow-sm border border-[#EFEBE6] flex flex-col">
+                <!-- Master Data Out-of-Sync Banner -->
+                <div id="master-stale-banner" class="hidden bg-amber-50 border-l-4 border-amber-500 p-3.5 rounded-r-xl mb-4 text-xs flex justify-between items-center transition shadow-sm">
+                    <div class="flex items-center space-x-2 text-amber-900 font-medium">
+                        <i class="fa-solid fa-triangle-exclamation text-amber-600 text-sm"></i>
+                        <span><strong>Master Data Out of Sync:</strong> Load Distribution data has changed since this timetable was generated.</span>
+                    </div>
+                    <button onclick="handleAutoSolve()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-1.5 rounded-lg transition text-xs shadow-sm flex items-center space-x-1.5">
+                        <i class="fa-solid fa-arrows-rotate"></i>
+                        <span>Regenerate Now</span>
+                    </button>
+                </div>
+
                 <!-- Status Banner for Dataset Mode -->
                 <div id="grid-status-banner" class="bg-[#FAF8F5] border-l-4 border-slate-400 p-3 rounded-r-xl mb-4 text-xs flex justify-between items-center transition">
                     <div class="flex items-center space-x-2 font-medium text-[#211C1A]" id="grid-status-text">
@@ -210,12 +273,25 @@
                         <p id="grid-subtitle" class="text-xs text-[#6B6259] mt-1 font-medium">Select a filter type to display schedule details</p>
                     </div>
                     
-                    <div id="date-version-panel" class="hidden flex items-center space-x-2">
-                        <span class="text-[11px] text-[#6B6259] font-bold uppercase tracking-wider">Date Version:</span>
-                        <select id="date-version-select" class="border border-[#EFEBE6] rounded-lg px-2.5 py-1 text-xs bg-white focus:outline-none">
-                            <option value="2024-09-30">Grid (30.09.24)</option>
-                            <option value="2024-11-18">Grid (18.11.24)</option>
-                        </select>
+                    <div class="flex items-center space-x-2">
+                        <div id="export-controls" class="flex items-center space-x-2">
+                            <button id="export-pdf-btn" class="bg-white hover:bg-[#FAF8F5] text-[#211C1A] text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#EFEBE6] transition shadow-sm flex items-center space-x-1.5">
+                                <i class="fa-solid fa-file-pdf text-red-600"></i>
+                                <span>Export PDF</span>
+                            </button>
+                            <button id="export-word-btn" class="bg-white hover:bg-[#FAF8F5] text-[#211C1A] text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#EFEBE6] transition shadow-sm flex items-center space-x-1.5">
+                                <i class="fa-solid fa-file-word text-blue-600"></i>
+                                <span>Export Word</span>
+                            </button>
+                        </div>
+
+                        <div id="date-version-panel" class="hidden flex items-center space-x-2">
+                            <span class="text-[11px] text-[#6B6259] font-bold uppercase tracking-wider">Date Version:</span>
+                            <select id="date-version-select" class="border border-[#EFEBE6] rounded-lg px-2.5 py-1 text-xs bg-white focus:outline-none">
+                                <option value="2024-09-30">Grid (30.09.24)</option>
+                                <option value="2024-11-18">Grid (18.11.24)</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -438,6 +514,8 @@
         let allRooms = [];
         let allSections = [];
         let allTimeSlots = [];
+        let allLoadDistribution = [];
+        let isMasterDataStale = false;
         
         let selectedView = "section"; 
         let selectedItemId = "";
@@ -461,6 +539,8 @@
             document.getElementById("upload-csv-btn").addEventListener("click", () => openCSVModal("general"));
             document.getElementById("upload-load-dist-btn").addEventListener("click", () => openCSVModal("load_distribution"));
             document.getElementById("toggle-conflicts-btn").addEventListener("click", handleToggleConflictsFilter);
+            document.getElementById("export-pdf-btn").addEventListener("click", handleExportPDF);
+            document.getElementById("export-word-btn").addEventListener("click", handleExportWord);
             document.getElementById("csv-preview-btn").addEventListener("click", handleCSVPreview);
             document.getElementById("csv-commit-btn").addEventListener("click", handleCSVCommit);
             document.getElementById("ai-chat-form").addEventListener("submit", handleAIChatSubmit);
@@ -471,6 +551,51 @@
             const btnText = document.getElementById("toggle-conflicts-text");
             btnText.innerText = showOnlyConflicts ? "Show All Cells" : "Filter Conflicts";
             renderGrid();
+        }
+
+        function handleExportPDF() {
+            window.print();
+        }
+
+        function handleExportWord() {
+            const gridTitle = document.getElementById("grid-title").innerText;
+            const tableHtml = document.querySelector("#column-grid table").outerHTML;
+            
+            const docContent = `
+                <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+                <head>
+                    <meta charset='utf-8'>
+                    <title>${gridTitle}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; font-size: 10pt; color: #000000; margin: 20px; }
+                        h1 { font-size: 15pt; text-align: center; margin-bottom: 2px; text-transform: uppercase; font-weight: bold; }
+                        h2 { font-size: 11pt; text-align: center; color: #333333; margin-top: 2px; margin-bottom: 14px; font-weight: bold; }
+                        p { font-size: 9pt; margin-bottom: 10px; }
+                        table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+                        th, td { border: 1px solid #333333; padding: 6px; text-align: center; vertical-align: top; font-size: 9pt; }
+                        th { background-color: #EFEFEF; font-weight: bold; }
+                    </style>
+                </head>
+                <body>
+                    <h1>INDIAN INSTITUTE OF INFORMATION TECHNOLOGY (IIST)</h1>
+                    <h2>OFFICIAL ACADEMIC TIMETABLE — ${gridTitle}</h2>
+                    <p><b>Effective Date Version:</b> ${selectedDateVersion} | <b>Generated Date:</b> ${new Date().toLocaleDateString()}</p>
+                    ${tableHtml}
+                    <br>
+                    <p style='font-size: 8pt; color: #555555; text-align: right;'>Approved by Academic Timetable Committee — Confidential</p>
+                </body>
+                </html>
+            `;
+
+            const blob = new Blob(['\ufeff', docContent], { type: 'application/msword' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${gridTitle.replace(/[^a-zA-Z0-9]/g, '_')}_Timetable.doc`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
 
         function getAuthHeaders() {
@@ -566,13 +691,14 @@
 
         async function fetchAllData() {
             try {
-                const [facRes, subRes, roomRes, secRes, tsRes, assignRes] = await Promise.all([
+                const [facRes, subRes, roomRes, secRes, tsRes, assignRes, loadRes] = await Promise.all([
                     fetch(`${API_URL}/api/faculty`, { headers: getAuthHeaders() }),
                     fetch(`${API_URL}/api/subjects`, { headers: getAuthHeaders() }),
                     fetch(`${API_URL}/api/rooms`, { headers: getAuthHeaders() }),
                     fetch(`${API_URL}/api/sections`, { headers: getAuthHeaders() }),
                     fetch(`${API_URL}/api/timeslots`, { headers: getAuthHeaders() }),
-                    fetch(`${API_URL}/api/assignments`, { headers: getAuthHeaders() })
+                    fetch(`${API_URL}/api/assignments`, { headers: getAuthHeaders() }),
+                    fetch(`${API_URL}/api/load-distribution`, { headers: getAuthHeaders() })
                 ]);
                 
                 allFaculty = await facRes.json();
@@ -581,6 +707,9 @@
                 allSections = await secRes.json();
                 allTimeSlots = await tsRes.json();
                 allAssignments = await assignRes.json();
+                if (loadRes.ok) {
+                    allLoadDistribution = await loadRes.json();
+                }
             } catch (err) {
                 console.error("Error fetching data", err);
             }
@@ -592,7 +721,11 @@
                 const data = await res.json();
                 activeConflicts = data.conflicts;
                 renderConflicts(data);
-                renderGrid(); 
+                if (selectedView === "master_load") {
+                    renderMasterLoadTable();
+                } else {
+                    renderGrid(); 
+                }
             } catch (err) {
                 console.error("Error fetching conflicts", err);
             }
@@ -600,8 +733,20 @@
 
         function populateViewItems() {
             const select = document.getElementById("view-item-select");
+            const selectContainer = select.parentElement;
             select.innerHTML = "";
             
+            if (selectedView === "master_load") {
+                selectContainer.classList.add("hidden");
+                document.getElementById("date-version-panel").classList.add("hidden");
+                document.getElementById("export-controls").classList.add("hidden");
+                renderMasterLoadTable();
+                return;
+            }
+            
+            selectContainer.classList.remove("hidden");
+            document.getElementById("export-controls").classList.remove("hidden");
+
             if (selectedView === "section") {
                 document.getElementById("date-version-panel").classList.remove("hidden");
                 allSections.forEach(s => {
@@ -646,6 +791,168 @@
             renderGrid();
         }
 
+        async function renderMasterLoadTable() {
+            const gridTitle = document.getElementById("grid-title");
+            gridTitle.innerText = "Master Load Distribution Module";
+            document.getElementById("grid-subtitle").innerText = "Raw extracted workload demand table. Edits directly update load requirements.";
+            
+            const gridStatusBanner = document.getElementById("grid-status-banner");
+            gridStatusBanner.classList.add("hidden");
+
+            const gridContainer = document.querySelector("#column-grid .overflow-x-auto");
+            gridContainer.innerHTML = `
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center bg-[#FAF8F5] p-3 rounded-xl border border-[#EFEBE6]">
+                        <span class="text-xs font-bold text-[#211C1A]">Total Master Load Records: ${allLoadDistribution.length}</span>
+                        ${userRole === 'admin' ? `
+                        <button onclick="saveNewLoadRow()" class="bg-[#E8590C] hover:bg-[#C74805] text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm transition">
+                            <i class="fa-solid fa-plus mr-1"></i> Add Load Entry
+                        </button>` : ''}
+                    </div>
+
+                    <div class="overflow-x-auto border border-[#EFEBE6] rounded-xl max-h-[550px]">
+                        <table class="min-w-full text-xs text-left">
+                            <thead class="bg-[#FAF8F5] text-[#211C1A] font-heading font-bold sticky top-0 border-b border-[#EFEBE6]">
+                                <tr>
+                                    <th class="p-2.5">ID</th>
+                                    <th class="p-2.5">Faculty Name</th>
+                                    <th class="p-2.5">Subject Name</th>
+                                    <th class="p-2.5">Section</th>
+                                    <th class="p-2.5">Semester</th>
+                                    <th class="p-2.5 w-16">TH Hours</th>
+                                    <th class="p-2.5 w-16">PR Hours</th>
+                                    <th class="p-2.5 w-16">Total</th>
+                                    <th class="p-2.5 text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-[#EFEBE6] bg-white">
+                                ${allLoadDistribution.map(row => `
+                                    <tr id="load-row-${row.id}" class="hover:bg-[#FAF8F5] transition">
+                                        <td class="p-2 font-mono text-[11px] text-[#6B6259]">${row.id}</td>
+                                        <td class="p-2">
+                                            <input type="text" id="fac-${row.id}" value="${row.faculty_name || ''}" class="w-full border border-[#EFEBE6] rounded px-2 py-1 text-xs focus:ring-[#E8590C]">
+                                        </td>
+                                        <td class="p-2">
+                                            <input type="text" id="sub-${row.id}" value="${row.subject_name || ''}" class="w-full border border-[#EFEBE6] rounded px-2 py-1 text-xs focus:ring-[#E8590C]">
+                                        </td>
+                                        <td class="p-2">
+                                            <input type="text" id="sec-${row.id}" value="${row.section_name || ''}" class="w-full border border-[#EFEBE6] rounded px-2 py-1 text-xs focus:ring-[#E8590C]">
+                                        </td>
+                                        <td class="p-2">
+                                            <input type="text" id="sem-${row.id}" value="${row.semester || ''}" class="w-full border border-[#EFEBE6] rounded px-2 py-1 text-xs focus:ring-[#E8590C]">
+                                        </td>
+                                        <td class="p-2">
+                                            <input type="number" step="0.5" id="th-${row.id}" value="${row.theory_hours || 0}" class="w-16 border border-[#EFEBE6] rounded px-1.5 py-1 text-xs focus:ring-[#E8590C]">
+                                        </td>
+                                        <td class="p-2">
+                                            <input type="number" step="0.5" id="pr-${row.id}" value="${row.practical_hours || 0}" class="w-16 border border-[#EFEBE6] rounded px-1.5 py-1 text-xs focus:ring-[#E8590C]">
+                                        </td>
+                                        <td class="p-2 font-bold font-mono text-[#211C1A]">${row.total_hours || 0}</td>
+                                        <td class="p-2 text-center space-x-1">
+                                            <button onclick="updateLoadRow(${row.id})" class="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded text-[11px] font-bold transition">
+                                                Save
+                                            </button>
+                                            <button onclick="deleteLoadRow(${row.id})" class="bg-red-50 text-red-700 hover:bg-red-100 px-2 py-1 rounded text-[11px] font-medium transition">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function updateLoadRow(id) {
+            const fac = document.getElementById(`fac-${id}`).value.trim();
+            const sub = document.getElementById(`sub-${id}`).value.trim();
+            const sec = document.getElementById(`sec-${id}`).value.trim();
+            const sem = document.getElementById(`sem-${id}`).value.trim();
+            const th = parseFloat(document.getElementById(`th-${id}`).value) || 0.0;
+            const pr = parseFloat(document.getElementById(`pr-${id}`).value) || 0.0;
+
+            try {
+                const res = await fetch(`${API_URL}/api/load-distribution/${id}`, {
+                    method: "PUT",
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        faculty_name: fac,
+                        subject_name: sub,
+                        section_name: sec,
+                        semester: sem,
+                        theory_hours: th,
+                        practical_hours: pr
+                    })
+                });
+
+                if (!res.ok) throw new Error("Failed to save Master Load record");
+
+                markMasterDataStale();
+                alert(`Saved Master Load row #${id} successfully!`);
+                await fetchAllData();
+                renderMasterLoadTable();
+            } catch (err) {
+                alert(err.message);
+            }
+        }
+
+        async function deleteLoadRow(id) {
+            if (!confirm(`Delete Master Load record #${id}?`)) return;
+
+            try {
+                const res = await fetch(`${API_URL}/api/load-distribution/${id}`, {
+                    method: "DELETE",
+                    headers: getAuthHeaders()
+                });
+
+                if (!res.ok) throw new Error("Delete failed");
+
+                markMasterDataStale();
+                await fetchAllData();
+                renderMasterLoadTable();
+            } catch (err) {
+                alert(err.message);
+            }
+        }
+
+        async function saveNewLoadRow() {
+            const fac = prompt("Faculty Name:");
+            if (!fac) return;
+            const sub = prompt("Subject Name:");
+            const sec = prompt("Section Name (e.g. CS-1):");
+            const th = parseFloat(prompt("Theory Hours (TH):", "4.0")) || 0.0;
+            const pr = parseFloat(prompt("Practical Hours (PR):", "2.0")) || 0.0;
+
+            try {
+                const res = await fetch(`${API_URL}/api/load-distribution`, {
+                    method: "POST",
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        faculty_name: fac,
+                        subject_name: sub || "New Subject",
+                        section_name: sec || "CS-1",
+                        theory_hours: th,
+                        practical_hours: pr
+                    })
+                });
+
+                if (!res.ok) throw new Error("Failed to add record");
+
+                markMasterDataStale();
+                await fetchAllData();
+                renderMasterLoadTable();
+            } catch (err) {
+                alert(err.message);
+            }
+        }
+
+        function markMasterDataStale() {
+            isMasterDataStale = true;
+            document.getElementById("master-stale-banner").classList.remove("hidden");
+        }
+
         function handleViewTypeChange(e) {
             selectedView = e.target.value;
             populateViewItems();
@@ -680,6 +987,36 @@
         }
 
         function renderGrid() {
+            if (selectedView === "master_load") {
+                renderMasterLoadTable();
+                return;
+            }
+
+            const gridContainer = document.querySelector("#column-grid .overflow-x-auto");
+            if (!document.getElementById("grid-body")) {
+                gridContainer.innerHTML = `
+                    <table class="min-w-full border-collapse text-center text-xs table-fixed">
+                        <thead>
+                            <tr class="bg-[#FAF8F5] border-b border-[#EFEBE6]">
+                                <th class="w-24 py-3 font-heading font-bold text-[#6B6259] uppercase tracking-wider text-[11px]">Day / Period</th>
+                                <th class="py-2.5 font-mono-code font-semibold text-[#211C1A]">P1<br><span class="text-[10px] text-[#6B6259] font-sans font-normal">09:30-10:20</span></th>
+                                <th class="py-2.5 font-mono-code font-semibold text-[#211C1A]">P2<br><span class="text-[10px] text-[#6B6259] font-sans font-normal">10:20-11:10</span></th>
+                                <th class="py-2.5 font-mono-code font-semibold text-[#211C1A]">P3<br><span class="text-[10px] text-[#6B6259] font-sans font-normal">11:10-12:00</span></th>
+                                <th class="py-2.5 font-mono-code font-semibold text-[#211C1A]">P4<br><span class="text-[10px] text-[#6B6259] font-sans font-normal">12:00-12:50</span></th>
+                                <th class="py-2.5 font-heading font-bold text-[#E8590C] bg-[#FFE8D6]/40 w-20 text-[11px] uppercase tracking-wider italic">LUNCH<br><span class="text-[10px] text-[#E8590C]/80 font-sans font-normal">12:50-01:40</span></th>
+                                <th class="py-2.5 font-mono-code font-semibold text-[#211C1A]">P5<br><span class="text-[10px] text-[#6B6259] font-sans font-normal">01:40-02:30</span></th>
+                                <th class="py-2.5 font-mono-code font-semibold text-[#211C1A]">P6<br><span class="text-[10px] text-[#6B6259] font-sans font-normal">02:30-03:20</span></th>
+                                <th class="py-2.5 font-mono-code font-semibold text-[#211C1A]">P7<br><span class="text-[10px] text-[#6B6259] font-sans font-normal">03:20-04:10</span></th>
+                            </tr>
+                        </thead>
+                        <tbody id="grid-body" class="bg-white divide-y divide-[#EFEBE6]/60">
+                        </tbody>
+                    </table>
+                `;
+            }
+
+            const gridStatusBanner = document.getElementById("grid-status-banner");
+            gridStatusBanner.classList.remove("hidden");
             updateGridStatusBanner();
             
             const body = document.getElementById("grid-body");

@@ -182,6 +182,15 @@ class SectionCreate(BaseModel):
     year: int
     department: str
 
+class LoadDistributionCreate(BaseModel):
+    faculty_name: str
+    semester: Optional[str] = None
+    section_name: Optional[str] = None
+    subject_name: Optional[str] = None
+    theory_hours: Optional[float] = 0.0
+    practical_hours: Optional[float] = 0.0
+    total_hours: Optional[float] = 0.0
+
 # ----------------- Auth Routes -----------------
 
 @app.post("/api/auth/register")
@@ -457,10 +466,18 @@ def get_assignments(db: Session = Depends(get_db)):
 
 @app.post("/api/assignments")
 def create_assignment(req: AssignmentCreate, admin: User = Depends(require_admin), db: Session = Depends(get_db)):
-    # Validate timeslot
+    # 1. Validate timeslot
     if not db.query(TimeSlot).filter(TimeSlot.id == req.timeslot_id).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid timeslot")
-    # Validate references
+    
+    # 2. Hard Constraint: Lunch Slot Rejection
+    if req.timeslot_id.endswith("_5"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail=f"Cannot move class to [{req.timeslot_id}]: Period 5 (12:50 - 13:40) is reserved for the institutional lunch break."
+        )
+
+    # 3. Validate references
     if not db.query(Faculty).filter(Faculty.id == req.faculty_id).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Faculty ID not found")
     if not db.query(Subject).filter(Subject.id == req.subject_id).first():
@@ -471,6 +488,18 @@ def create_assignment(req: AssignmentCreate, admin: User = Depends(require_admin
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Section ID not found")
     if req.batch_id and not db.query(Batch).filter(Batch.id == req.batch_id).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Batch ID not found")
+
+    # 4. Hard Constraint: Faculty Double-Booking Check
+    fac_clash = db.query(Assignment).filter(
+        Assignment.faculty_id == req.faculty_id,
+        Assignment.timeslot_id == req.timeslot_id
+    ).first()
+    if fac_clash:
+        sub_name = fac_clash.subject_id
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot move class to [{req.timeslot_id}]: Faculty is already assigned to teach '{sub_name}' elsewhere in period {req.timeslot_id.split('_')[-1]}."
+        )
 
     assign = Assignment(**req.dict())
     db.add(assign)
@@ -483,6 +512,26 @@ def update_assignment(assign_id: int, req: AssignmentCreate, admin: User = Depen
     if not assign:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
         
+    # 1. Hard Constraint: Lunch Slot Rejection
+    if req.timeslot_id.endswith("_5"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail=f"Cannot move class to [{req.timeslot_id}]: Period 5 (12:50 - 13:40) is reserved for the institutional lunch break."
+        )
+
+    # 2. Hard Constraint: Faculty Double-Booking Check (excluding current assignment)
+    fac_clash = db.query(Assignment).filter(
+        Assignment.faculty_id == req.faculty_id,
+        Assignment.timeslot_id == req.timeslot_id,
+        Assignment.id != assign_id
+    ).first()
+    if fac_clash:
+        sub_name = fac_clash.subject_id
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot move class to [{req.timeslot_id}]: Faculty is already assigned to teach '{sub_name}' elsewhere in period {req.timeslot_id.split('_')[-1]}."
+        )
+
     for k, v in req.dict().items():
         setattr(assign, k, v)
     db.commit()
@@ -496,6 +545,40 @@ def delete_assignment(assign_id: int, admin: User = Depends(require_admin), db: 
     db.delete(assign)
     db.commit()
     return {"message": "Assignment deleted successfully"}
+
+# 6. Load Distribution Master Data
+@app.get("/api/load-distribution")
+def get_load_distribution(db: Session = Depends(get_db)):
+    return db.query(LoadDistribution).all()
+
+@app.post("/api/load-distribution")
+def create_load_distribution(req: LoadDistributionCreate, admin: User = Depends(require_admin), db: Session = Depends(get_db)):
+    entry = LoadDistribution(**req.dict())
+    if not entry.total_hours:
+        entry.total_hours = (entry.theory_hours or 0.0) + (entry.practical_hours or 0.0)
+    db.add(entry)
+    db.commit()
+    return entry
+
+@app.put("/api/load-distribution/{load_id}")
+def update_load_distribution(load_id: int, req: LoadDistributionCreate, admin: User = Depends(require_admin), db: Session = Depends(get_db)):
+    entry = db.query(LoadDistribution).filter(LoadDistribution.id == load_id).first()
+    if not entry:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Load distribution record not found")
+    for k, v in req.dict().items():
+        setattr(entry, k, v)
+    entry.total_hours = (entry.theory_hours or 0.0) + (entry.practical_hours or 0.0)
+    db.commit()
+    return entry
+
+@app.delete("/api/load-distribution/{load_id}")
+def delete_load_distribution(load_id: int, admin: User = Depends(require_admin), db: Session = Depends(get_db)):
+    entry = db.query(LoadDistribution).filter(LoadDistribution.id == load_id).first()
+    if not entry:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Load distribution record not found")
+    db.delete(entry)
+    db.commit()
+    return {"message": "Load distribution entry deleted successfully"}
 
 # ----------------- CSV Import/Preview/Commit -----------------
 
