@@ -147,7 +147,7 @@
     <div id="main-dashboard" class="hidden min-h-screen flex flex-col">
         <!-- Navigation Header -->
         <header class="bg-white border-b border-[#EFEBE6] sticky top-0 z-30">
-            <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="max-w-[1920px] w-full mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between h-16 items-center">
                     <div class="flex items-center space-x-3">
                         <div class="w-9 h-9 rounded-xl bg-[#E8590C] text-white flex items-center justify-center text-lg shadow-sm">
@@ -171,9 +171,9 @@
         </header>
 
         <!-- Main Body -->
-        <main class="flex-grow max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col xl:flex-row gap-6">
+        <main class="flex-grow max-w-[1920px] w-full mx-auto px-3 sm:px-4 lg:px-6 py-4 flex flex-col xl:flex-row gap-4">
             <!-- Column 1: Primary Controls & Actions -->
-            <div id="column-sidebar" class="w-full xl:w-1/4 flex flex-col gap-6">
+            <div id="column-sidebar" class="w-full xl:w-[240px] xl:flex-none flex flex-col gap-4">
                 <!-- HERO START CTA: Upload Load Distribution -->
                 <div class="bg-gradient-to-br from-[#E8590C] to-[#C74805] p-5 rounded-2xl text-white shadow-md space-y-3">
                     <div class="flex items-center space-x-2.5 font-heading font-bold text-base">
@@ -326,18 +326,18 @@
                 </div>
 
                 <div class="overflow-x-auto flex-grow">
-                    <table class="min-w-full border-collapse text-center text-xs table-fixed">
+                    <table class="w-full border-collapse text-center text-xs table-fixed">
                         <thead>
                             <tr class="bg-[#FAF8F5] border-b border-[#EFEBE6]">
-                                <th class="w-24 py-3 font-heading font-bold text-[#6B6259] uppercase tracking-wider text-[11px]">Day / Period</th>
-                                <th class="py-2.5 font-mono-code font-semibold text-[#211C1A]">P1<br><span class="text-[10px] text-[#6B6259] font-sans font-normal">09:30-10:20</span></th>
-                                <th class="py-2.5 font-mono-code font-semibold text-[#211C1A]">P2<br><span class="text-[10px] text-[#6B6259] font-sans font-normal">10:20-11:10</span></th>
-                                <th class="py-2.5 font-mono-code font-semibold text-[#211C1A]">P3<br><span class="text-[10px] text-[#6B6259] font-sans font-normal">11:10-12:00</span></th>
-                                <th class="py-2.5 font-mono-code font-semibold text-[#211C1A]">P4<br><span class="text-[10px] text-[#6B6259] font-sans font-normal">12:00-12:50</span></th>
-                                <th class="py-2.5 font-heading font-bold text-[#E8590C] bg-[#FFE8D6]/40 w-20 text-[11px] uppercase tracking-wider italic">LUNCH<br><span class="text-[10px] text-[#E8590C]/80 font-sans font-normal">12:50-01:40</span></th>
-                                <th class="py-2.5 font-mono-code font-semibold text-[#211C1A]">P5<br><span class="text-[10px] text-[#6B6259] font-sans font-normal">01:40-02:30</span></th>
-                                <th class="py-2.5 font-mono-code font-semibold text-[#211C1A]">P6<br><span class="text-[10px] text-[#6B6259] font-sans font-normal">02:30-03:20</span></th>
-                                <th class="py-2.5 font-mono-code font-semibold text-[#211C1A]">P7<br><span class="text-[10px] text-[#6B6259] font-sans font-normal">03:20-04:10</span></th>
+                                <th class="w-[7%] py-2 font-heading font-bold text-[#6B6259] uppercase tracking-wider text-[10px]">Day</th>
+                                <th class="w-[12.5%] py-2 font-mono-code font-semibold text-[#211C1A]">P1<br><span class="text-[9px] text-[#6B6259] font-sans font-normal">09:30-10:20</span></th>
+                                <th class="w-[12.5%] py-2 font-mono-code font-semibold text-[#211C1A]">P2<br><span class="text-[9px] text-[#6B6259] font-sans font-normal">10:20-11:10</span></th>
+                                <th class="w-[12.5%] py-2 font-mono-code font-semibold text-[#211C1A]">P3<br><span class="text-[9px] text-[#6B6259] font-sans font-normal">11:10-12:00</span></th>
+                                <th class="w-[12.5%] py-2 font-mono-code font-semibold text-[#211C1A]">P4<br><span class="text-[9px] text-[#6B6259] font-sans font-normal">12:00-12:50</span></th>
+                                <th class="w-[5%] py-2 font-heading font-bold text-[#E8590C] bg-[#FFE8D6]/40 text-[10px] uppercase tracking-wider italic">LUNCH<br><span class="text-[9px] text-[#E8590C]/80 font-sans font-normal">12:50-01:40</span></th>
+                                <th class="w-[12.5%] py-2 font-mono-code font-semibold text-[#211C1A]">P5<br><span class="text-[9px] text-[#6B6259] font-sans font-normal">01:40-02:30</span></th>
+                                <th class="w-[12.5%] py-2 font-mono-code font-semibold text-[#211C1A]">P6<br><span class="text-[9px] text-[#6B6259] font-sans font-normal">02:30-03:20</span></th>
+                                <th class="w-[12.5%] py-2 font-mono-code font-semibold text-[#211C1A]">P7<br><span class="text-[9px] text-[#6B6259] font-sans font-normal">03:20-04:10</span></th>
                             </tr>
                         </thead>
                         <tbody id="grid-body" class="bg-white divide-y divide-[#EFEBE6]/60">
@@ -348,7 +348,7 @@
             </div>
 
             <!-- Column 3: Persistent AI Assistant Side Panel -->
-            <div class="w-full xl:w-1/5 bg-white p-5 rounded-2xl shadow-sm border border-[#EFEBE6] flex flex-col h-[750px]">
+            <div class="w-full xl:w-[300px] xl:flex-none bg-white p-4 rounded-2xl shadow-sm border border-[#EFEBE6] flex flex-col h-[750px]">
                 <div class="flex items-center justify-between border-b border-[#FAF8F5] pb-3 mb-3">
                     <div class="flex items-center space-x-2">
                         <div class="w-7 h-7 rounded-lg bg-[#FFE8D6] text-[#E8590C] flex items-center justify-center text-sm font-bold">
@@ -1274,16 +1274,16 @@
             
             days.forEach(day => {
                 const tr = document.createElement("tr");
-                tr.className = "min-h-[110px]";
+                tr.className = "min-h-[90px]";
                 const dayTd = document.createElement("td");
-                dayTd.className = "border border-[#EFEBE6] font-heading font-bold bg-[#FAF8F5] text-[#211C1A] py-4 pl-3 text-left text-xs uppercase tracking-wider align-middle";
+                dayTd.className = "border border-[#EFEBE6] font-heading font-bold bg-[#FAF8F5] text-[#211C1A] py-2 px-1 text-center text-[10px] uppercase tracking-wide align-middle font-semibold";
                 dayTd.innerText = day;
                 tr.appendChild(dayTd);
                 
                 periodSequence.forEach(p => {
                     if (p === "LUNCH") {
                         const lunchTd = document.createElement("td");
-                        lunchTd.className = "border border-[#EFEBE6] bg-[#FFE8D6]/30 text-[#E8590C] font-heading font-bold text-[11px] uppercase tracking-wider italic align-middle";
+                        lunchTd.className = "border border-[#EFEBE6] bg-[#FFE8D6]/30 text-[#E8590C] font-heading font-bold text-[9px] uppercase tracking-wider italic align-middle p-0.5";
                         lunchTd.innerText = "LUNCH";
                         tr.appendChild(lunchTd);
                         return;
@@ -1319,13 +1319,13 @@
                     // Handle "Show Conflicts Only" toggle filter
                     if (showOnlyConflicts && cellConflicts.length === 0) {
                         const emptyTd = document.createElement("td");
-                        emptyTd.className = "border border-[#EFEBE6] p-2 bg-[#FAF8F5]/30 opacity-40 min-h-[110px]";
+                        emptyTd.className = "border border-[#EFEBE6] p-1 bg-[#FAF8F5]/30 opacity-40 min-h-[90px]";
                         tr.appendChild(emptyTd);
                         return;
                     }
                     
                     const cellTd = document.createElement("td");
-                    cellTd.className = "border border-[#EFEBE6] p-2 text-xs relative align-top hover:bg-[#FAF8F5]/60 transition cursor-pointer min-h-[110px] h-full";
+                    cellTd.className = "border border-[#EFEBE6] p-1 text-xs relative align-top hover:bg-[#FAF8F5]/60 transition cursor-pointer min-h-[90px] h-full";
                     
                     const isHighlightedConflict = cellConflicts.some(c => highlightConflictIds.includes(c.details?.load_entry_id || c.affected_ids[0]));
                     
@@ -1334,7 +1334,7 @@
                     }
                     
                     if (cellConflicts.length > 0) {
-                        cellTd.classList.add("border-l-4", "border-l-[#D92D20]", "bg-red-50/20");
+                        cellTd.classList.add("border-l-2", "border-l-[#D92D20]", "bg-red-50/20");
                     }
                     if (isHighlightedConflict) {
                         cellTd.classList.add("ring-2", "ring-[#E8590C]", "ring-offset-1");
@@ -1344,28 +1344,28 @@
                         cellAssignments.forEach((a, index) => {
                             const wrapper = document.createElement("div");
                             const isStacked = cellAssignments.length > 1;
-                            wrapper.className = `bg-white p-2.5 rounded-xl border border-[#EFEBE6] shadow-sm space-y-1 relative hover:border-[#E8590C] transition text-left ${
-                                isStacked && index > 0 ? "mt-2 pt-2 border-t border-[#EFEBE6]" : ""
+                            wrapper.className = `bg-white p-1.5 rounded-lg border border-[#EFEBE6] shadow-2xs space-y-0.5 relative hover:border-[#E8590C] transition text-left ${
+                                isStacked && index > 0 ? "mt-1.5 pt-1.5 border-t border-[#EFEBE6]" : ""
                             }`;
                             
                             const sub = allSubjects.find(s => s.id === a.subject_id);
                             const fac = allFaculty.find(f => f.id === a.faculty_id);
                             const rm = allRooms.find(r => r.id === a.room_id);
                             
-                            const batchBadge = a.batch_id ? `<span class="bg-[#FFE8D6] text-[#E8590C] text-[10px] px-1.5 py-0.5 rounded-md font-bold mr-1.5 shadow-2xs">${a.batch_id.split('_').pop()}</span>` : "";
-                            const hasConflictDot = cellConflicts.length > 0 ? `<span class="inline-block w-2 h-2 rounded-full bg-[#D92D20] mr-1.5 animate-pulse" title="Conflict Detected"></span>` : "";
+                            const batchBadge = a.batch_id ? `<span class="bg-[#FFE8D6] text-[#E8590C] text-[9px] px-1 py-0.2 rounded font-bold mr-1">${a.batch_id.split('_').pop()}</span>` : "";
+                            const hasConflictDot = cellConflicts.length > 0 ? `<span class="inline-block w-1.5 h-1.5 rounded-full bg-[#D92D20] mr-1 animate-pulse" title="Conflict Detected"></span>` : "";
                             
                             wrapper.innerHTML = `
-                                <div class="font-heading font-bold text-[#211C1A] text-xs leading-tight flex items-start justify-between">
-                                    <span class="truncate">${hasConflictDot}${batchBadge}${sub ? (sub.name || sub.code) : a.subject_id}</span>
+                                <div class="font-heading font-bold text-[#211C1A] text-[10px] leading-tight flex items-start justify-between">
+                                    <span class="truncate" title="${sub ? (sub.name || sub.code) : a.subject_id}">${hasConflictDot}${batchBadge}${sub ? (sub.name || sub.code) : a.subject_id}</span>
                                 </div>
-                                <div class="text-[#6B6259] text-[11px] font-medium truncate mt-1 flex items-center space-x-1">
-                                    <i class="fa-solid fa-user-tie text-[10px] text-[#6B6259]/70"></i>
-                                    <span>${fac ? fac.full_name : a.faculty_id}</span>
+                                <div class="text-[#6B6259] text-[9px] font-medium truncate flex items-center space-x-1">
+                                    <i class="fa-solid fa-user-tie text-[8px] text-[#6B6259]/70"></i>
+                                    <span class="truncate">${fac ? fac.full_name : a.faculty_id}</span>
                                 </div>
-                                <div class="mt-1.5 flex items-center justify-between">
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-mono font-semibold bg-[#FAF8F5] text-[#E8590C] border border-[#FFE8D6]">
-                                        <i class="fa-solid fa-location-dot text-[9px] mr-1 text-[#E8590C]"></i>${rm ? rm.name : a.room_id}
+                                <div class="mt-0.5 flex items-center justify-between">
+                                    <span class="inline-flex items-center px-1 py-0.2 rounded text-[8px] font-mono font-semibold bg-[#FAF8F5] text-[#E8590C] border border-[#FFE8D6]">
+                                        <i class="fa-solid fa-location-dot text-[7px] mr-0.5 text-[#E8590C]"></i>${rm ? rm.name : a.room_id}
                                     </span>
                                 </div>
                             `;
