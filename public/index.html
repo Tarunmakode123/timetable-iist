@@ -830,12 +830,22 @@
 
         async function performLogin(usernameInput, passwordInput) {
             const errorDiv = document.getElementById("login-error");
+            const submitBtn = document.getElementById("login-submit-btn");
+            const originalBtnHtml = submitBtn ? submitBtn.innerHTML : "Sign In";
+            
             errorDiv.classList.add("hidden");
             
             if (!usernameInput || !passwordInput) {
-                errorDiv.innerText = "Please enter both username and password.";
+                const msg = "Please enter both username and password.";
+                errorDiv.innerText = msg;
                 errorDiv.classList.remove("hidden");
+                showToast(msg, "error");
                 return;
+            }
+            
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = `<span><i class="fa-solid fa-spinner animate-spin mr-2"></i> Signing In...</span>`;
             }
             
             try {
@@ -848,7 +858,7 @@
                 const responseText = await res.text();
                 
                 if (!res.ok) {
-                    let errMsg = `Server Error (${res.status})`;
+                    let errMsg = `Invalid credentials (${res.status})`;
                     try {
                         const err = JSON.parse(responseText);
                         errMsg = err.detail || errMsg;
@@ -868,10 +878,17 @@
                 localStorage.setItem("username", data.username);
                 localStorage.setItem("faculty_id", userFacultyId);
                 
+                showToast(`Welcome back, ${data.username}! Logged in successfully.`, "success");
                 initApp();
             } catch (err) {
                 errorDiv.innerText = err.message;
                 errorDiv.classList.remove("hidden");
+                showToast(`Login Failed: ${err.message}`, "error");
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalBtnHtml;
+                }
             }
         }
 

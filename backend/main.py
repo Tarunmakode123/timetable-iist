@@ -212,6 +212,7 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
     return {"message": "User registered successfully"}
 
 @app.post("/api/auth/login")
+@app.post("/auth/login")
 def login(req: LoginRequest, db: Session = Depends(get_db)):
     try:
         if req.username == "admin" and req.password == "admin123":
