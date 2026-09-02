@@ -1519,12 +1519,16 @@
                 if (data.mode === "query") {
                     appendChatMessage("assistant", data.text);
                     if (data.target_type && data.target_id) {
-                        selectedView = data.target_type;
-                        document.getElementById("view-type-select").value = data.target_type;
-                        populateViewItems();
-                        selectedItemId = data.target_id;
-                        document.getElementById("view-item-select").value = data.target_id;
-                        renderGrid();
+                        try {
+                            selectedView = data.target_type;
+                            document.getElementById("view-type-select").value = data.target_type;
+                            populateViewItems();
+                            selectedItemId = data.target_id;
+                            document.getElementById("view-item-select").value = data.target_id;
+                            renderGrid();
+                        } catch (uiErr) {
+                            console.warn("Visual grid sync warning:", uiErr);
+                        }
                     }
                 } else if (data.mode === "action") {
                     if (data.status === "valid" && data.diff) {
