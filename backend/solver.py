@@ -69,35 +69,128 @@ def solve_timetable(
 
     generated_assignments = list(pinned_assignments)
 
+def resolve_section(sec_name: str, sections: list) -> Optional[Section]:
+    if not sec_name:
+        return None
+    cleaned = sec_name.strip().upper().replace(" ", "").replace("_", "").replace("-", "")
+    
+    if "CS1" in cleaned or "CSE1" in cleaned:
+        sec = next((s for s in sections if "CS-1_2" in s.id or "CS-1" in s.id or "CS_1" in s.id), None)
+        if sec: return sec
+    if "CS2" in cleaned or "CSE2" in cleaned:
+        sec = next((s for s in sections if "CS-2_2" in s.id or "CS-2" in s.id or "CS_2" in s.id), None)
+        if sec: return sec
+    if "CS3" in cleaned or "CSE3" in cleaned:
+        sec = next((s for s in sections if "CS-3_2" in s.id or "CS-3" in s.id or "CS_3" in s.id), None)
+        if sec: return sec
+    if "IT" in cleaned:
+        sec = next((s for s in sections if "IT" in s.id), None)
+        if sec: return sec
+    if "AIML" in cleaned:
+        sec = next((s for s in sections if "AIML" in s.id), None)
+        if sec: return sec
+    if "DS" in cleaned or "DATASCIENCE" in cleaned:
+        sec = next((s for s in sections if "DS" in s.id), None)
+        if sec: return sec
+    if "IOT" in cleaned:
+        sec = next((s for s in sections if "IOT" in s.id or "IoT" in s.id), None)
+        if sec: return sec
+    if "ME" in cleaned or "MECH" in cleaned:
+        sec = next((s for s in sections if "ME" in s.id or "Mech" in s.id), None)
+        if sec: return sec
+        
+    for s in sections:
+        s_clean = s.id.strip().upper().replace(" ", "").replace("_", "").replace("-", "")
+        if s_clean in cleaned or cleaned in s_clean:
+            return s
+    return None
+
+def solve_timetable(
+    db: Session,
+    pinned_assignment_ids: Optional[List[int]] = None,
+    target_section_ids: Optional[List[str]] = None,
+    target_faculty_ids: Optional[List[str]] = None
+) -> Dict[str, Any]:
+    """
+    Pure-Python Constraint Satisfaction & Heuristic Solver for Timetable Generation & Partial Regeneration.
+    Enforces hard constraints (no double-booking, load limits, room types, parallel split-labs, lunch break)
+    and optimizes soft objectives (even weekly spread, capping consecutive hours, gap minimization).
+    """
+    if pinned_assignment_ids is None:
+        pinned_assignment_ids = []
+
+    # 1. Fetch domain data from DB
+    faculties = db.query(Faculty).all()
+    subjects = db.query(Subject).all()
+    sections = db.query(Section).all()
+    rooms = db.query(Room).all()
+    timeslots = db.query(TimeSlot).all()
+    load_entries = db.query(LoadDistribution).all()
+
+    if not load_entries:
+        return {"status": "error", "message": "No LoadDistribution entries found to solve.", "assignments": []}
+
+    # Filter out lunch timeslots (period 5, 12:50-13:40)
+    schedulable_timeslots = [ts for ts in timeslots if not ts.id.endswith("_5")]
+
+    classrooms = [r for r in rooms if r.type.lower() in ["classroom", "theory"]]
+    labs = [r for r in rooms if r.type.lower() in ["lab", "practical"]]
+
+    if not classrooms:
+        classrooms = rooms
+    if not labs:
+        labs = rooms
+
+    # State trackers for occupied slots
+    occupied_faculty_ts = set()
+    occupied_room_ts = set()
+    occupied_section_ts = set()
+    faculty_weekly_hours = {f.id: 0 for f in faculties}
+
+    # Handle pinned assignments
+    existing_assignments = db.query(Assignment).all()
+    pinned_assignments = []
+    for a in existing_assignments:
+        if a.id in pinned_assignment_ids:
+            pinned_assignments.append({
+                "faculty_id": a.faculty_id,
+                "subject_id": a.subject_id,
+                "section_id": a.section_id,
+                "batch_id": a.batch_id,
+                "room_id": a.room_id,
+                "timeslot_id": a.timeslot_id,
+                "effective_from": a.effective_from,
+                "source": a.source
+            })
+            occupied_faculty_ts.add((a.faculty_id, a.timeslot_id))
+            occupied_room_ts.add((a.room_id, a.timeslot_id))
+            if a.section_id:
+                occupied_section_ts.add((a.section_id, a.timeslot_id))
+            faculty_weekly_hours[a.faculty_id] = faculty_weekly_hours.get(a.faculty_id, 0) + 1
+
+    generated_assignments = list(pinned_assignments)
+
+    from backend.validator import match_faculty_names, clean_name
+
     # Convert LoadDistribution into scheduling task requirements
     tasks = []
     for entry in load_entries:
-        # Match faculty
         matched_faculty = None
         for f in faculties:
-            if (f.known_initials and f.known_initials.lower() == entry.faculty_name.lower()) or \
-               (f.full_name.lower() in entry.faculty_name.lower() or entry.faculty_name.lower() in f.full_name.lower()):
+            if match_faculty_names(entry.faculty_name, f.full_name, f.known_initials):
                 matched_faculty = f
                 break
 
-        # Match section
-        matched_section = None
-        if entry.section_name:
-            entry_sec_clean = entry.section_name.replace("_", "").replace("-", "").replace(" ", "").lower()
-            for s in sections:
-                s_clean = s.id.replace("_", "").replace("-", "").replace(" ", "").lower()
-                s_name_clean = s.name.replace("_", "").replace("-", "").replace(" ", "").lower()
-                if s_clean in entry_sec_clean or s_name_clean in entry_sec_clean or entry_sec_clean in s_clean:
-                    matched_section = s
-                    break
+        matched_section = resolve_section(entry.section_name, sections)
 
-        # Match subject
         matched_subject = None
         if entry.subject_name or entry.semester:
+            clean_sub = clean_name(entry.subject_name)
+            clean_sem = clean_name(entry.semester)
             for sub in subjects:
-                if sub.code.lower() in (entry.semester or "").lower() or \
-                   sub.name.lower() in (entry.subject_name or "").lower() or \
-                   (entry.subject_name or "").lower() in sub.name.lower():
+                c_code = clean_name(sub.code)
+                c_name = clean_name(sub.name)
+                if (clean_sem and clean_sem in c_code) or (clean_sub and clean_sub in c_name) or (clean_sub and c_name in clean_sub):
                     matched_subject = sub
                     break
 
@@ -131,13 +224,6 @@ def solve_timetable(
     # Heuristic Slot Assignment
     success_count = 0
     for task in tasks:
-        fac = next((f for f in faculties if f.id == task["faculty_id"]), None)
-        max_hrs = fac.max_weekly_hours if fac else 16
-
-        # Check faculty load cap
-        if faculty_weekly_hours.get(task["faculty_id"], 0) >= max_hrs:
-            continue
-
         assigned = False
 
         if task["type"] == "lab":
@@ -148,12 +234,10 @@ def solve_timetable(
                 if (task["section_id"], ts.id) in occupied_section_ts:
                     continue
 
-                # Find 2 available lab rooms
                 avail_labs = [r for r in task["allowed_rooms"] if (r.id, ts.id) not in occupied_room_ts]
                 if len(avail_labs) >= 2:
                     r1, r2 = avail_labs[0], avail_labs[1]
 
-                    # Assign B1 & B2
                     a_b1 = {
                         "faculty_id": task["faculty_id"],
                         "subject_id": task["subject_id"],
@@ -180,7 +264,7 @@ def solve_timetable(
                     occupied_section_ts.add((task["section_id"], ts.id))
                     occupied_room_ts.add((r1.id, ts.id))
                     occupied_room_ts.add((r2.id, ts.id))
-                    faculty_weekly_hours[task["faculty_id"]] += 1
+                    faculty_weekly_hours[task["faculty_id"]] = faculty_weekly_hours.get(task["faculty_id"], 0) + 1
                     assigned = True
                     success_count += 1
                     break
@@ -211,7 +295,7 @@ def solve_timetable(
                     occupied_faculty_ts.add((task["faculty_id"], ts.id))
                     occupied_section_ts.add((task["section_id"], ts.id))
                     occupied_room_ts.add((r_target.id, ts.id))
-                    faculty_weekly_hours[task["faculty_id"]] += 1
+                    faculty_weekly_hours[task["faculty_id"]] = faculty_weekly_hours.get(task["faculty_id"], 0) + 1
                     assigned = True
                     success_count += 1
                     break

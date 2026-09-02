@@ -103,9 +103,12 @@ def validate_all(db: Session):
                 if is_identical:
                     continue
 
+                # Check for legitimate merged/combined lecture (same faculty in same room for multiple sections)
+                is_merged_lecture = (a1.faculty_id == a2.faculty_id and a1.room_id == a2.room_id)
+
                 # 2.a Faculty Double-Booking
-                # Flagged only if same faculty is assigned to TWO DIFFERENT sections or DIFFERENT rooms simultaneously
-                if a1.faculty_id == a2.faculty_id:
+                # Flagged only if same faculty is assigned to TWO DIFFERENT rooms simultaneously
+                if a1.faculty_id == a2.faculty_id and not is_merged_lecture:
                     is_same_class = (p_sec1 == p_sec2 and p_sec1 is not None and a1.room_id == a2.room_id)
                     if not is_same_class and p_sec1 != p_sec2:
                         conflict_key = ("faculty_double_booking", a1.faculty_id, a1.timeslot_id)
@@ -125,8 +128,8 @@ def validate_all(db: Session):
                             })
                 
                 # 2.b Room Double-Booking
-                # Flagged only if same room is assigned to TWO DIFFERENT sections simultaneously
-                if a1.room_id == a2.room_id:
+                # Flagged only if same room is assigned to TWO DIFFERENT faculties or sections without co-teaching/merging
+                if a1.room_id == a2.room_id and not is_merged_lecture:
                     if p_sec1 != p_sec2 and p_sec1 is not None and p_sec2 is not None:
                         conflict_key = ("room_double_booking", a1.room_id, a1.timeslot_id)
                         if conflict_key not in seen_conflict_pairs:
