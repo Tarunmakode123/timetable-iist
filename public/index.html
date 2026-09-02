@@ -1294,6 +1294,7 @@
             document.getElementById("grid-subtitle").innerText = `Filtered by: ${selectedView.toUpperCase()} | Active CP-SAT Schedule`;
 
             const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+            const periodSequence = [1, 2, 3, 4, "LUNCH", 6, 7, 8];
             
             days.forEach(day => {
                 const tr = document.createElement("tr");
@@ -1303,12 +1304,13 @@
                 dayTd.innerText = day;
                 tr.appendChild(dayTd);
                 
-                for (let p = 1; p <= 8; p++) {
-                    if (p === 5) {
+                periodSequence.forEach(p => {
+                    if (p === "LUNCH") {
                         const lunchTd = document.createElement("td");
                         lunchTd.className = "border border-[#EFEBE6] bg-[#FFE8D6]/30 text-[#E8590C] font-heading font-bold text-[11px] uppercase tracking-wider italic align-middle";
                         lunchTd.innerText = "LUNCH";
                         tr.appendChild(lunchTd);
+                        return;
                     }
                     
                     const tsId = `${day}_${p}`;
