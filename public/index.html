@@ -960,16 +960,48 @@
                     if (matched) {
                         const opt = document.createElement("option");
                         opt.value = matched.id;
-                        opt.innerText = matched.full_name;
+                        opt.innerText = matched.full_name || matched.id;
                         select.appendChild(opt);
                     }
                 } else {
-                    allFaculty.forEach(f => {
-                        const opt = document.createElement("option");
-                        opt.value = f.id;
-                        opt.innerText = f.full_name;
-                        select.appendChild(opt);
-                    });
+                    // Clean & Categorize Faculty List:
+                    // 1. Primary Full-Name Professors
+                    // 2. Initial Codes / Shared Workload
+                    const isPrimary = (f) => {
+                        const name = (f.full_name || "").trim();
+                        if (!name || name.length <= 3) return false;
+                        if (name.includes("+") || name.includes("/")) return false;
+                        if (name.toUpperCase().startsWith("NF-") || name.toUpperCase().startsWith("NF_")) return false;
+                        return true;
+                    };
+
+                    const primaryList = allFaculty.filter(f => isPrimary(f)).sort((a, b) => (a.full_name || a.id).localeCompare(b.full_name || b.id));
+                    const secondaryList = allFaculty.filter(f => !isPrimary(f) && (f.full_name || f.id).trim().length > 0).sort((a, b) => (a.full_name || a.id).localeCompare(b.full_name || b.id));
+
+                    if (primaryList.length > 0) {
+                        const group1 = document.createElement("optgroup");
+                        group1.label = "── 👨‍🏫 Faculty Members (Full Name) ──";
+                        primaryList.forEach(f => {
+                            const opt = document.createElement("option");
+                            opt.value = f.id;
+                            opt.innerText = f.full_name || f.id;
+                            group1.appendChild(opt);
+                        });
+                        select.appendChild(group1);
+                    }
+
+                    if (secondaryList.length > 0) {
+                        const group2 = document.createElement("optgroup");
+                        group2.label = "── 📌 Shared Load / Faculty Codes ──";
+                        secondaryList.forEach(f => {
+                            const opt = document.createElement("option");
+                            opt.value = f.id;
+                            const displayName = f.full_name || f.id;
+                            opt.innerText = displayName.length <= 4 ? `${displayName} (Faculty Code)` : displayName;
+                            group2.appendChild(opt);
+                        });
+                        select.appendChild(group2);
+                    }
                 }
             } else if (selectedView === "room") {
                 document.getElementById("date-version-panel").classList.add("hidden");
