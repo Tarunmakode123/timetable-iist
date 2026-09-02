@@ -162,15 +162,33 @@ def parse_grid_cell(room_val, subject_val, faculty_val):
         "batch": batch
     }]
 
-def parse_load_distribution(path):
-    wb = openpyxl.load_workbook(path, data_only=True)
-    sheet = wb["Final Subject Distribution "]
+def parse_load_distribution(path_or_wb):
+    if isinstance(path_or_wb, openpyxl.Workbook):
+        wb = path_or_wb
+    else:
+        wb = openpyxl.load_workbook(path_or_wb, data_only=True)
+    
+    sheet = None
+    for name in ["Final Subject Distribution ", "Final Subject Distribution", "Sheet1", "Load Distribution"]:
+        if name in wb.sheetnames:
+            sheet = wb[name]
+            break
+    if not sheet:
+        sheet = wb.active
     
     records = []
     curr_faculty = ""
     curr_semester = ""
     
-    for r in range(6, sheet.max_row + 1):
+    # Locate header row dynamically if possible
+    start_row = 6
+    for r in range(1, 15):
+        row_str = " ".join([clean_text(get_cell_value(sheet, r, c)).lower() for c in range(1, 10)])
+        if "faculty" in row_str and ("subject" in row_str or "section" in row_str):
+            start_row = r + 1
+            break
+
+    for r in range(start_row, sheet.max_row + 1):
         f_name = clean_text(get_cell_value(sheet, r, 2))
         sem = clean_text(get_cell_value(sheet, r, 3))
         sec = clean_text(get_cell_value(sheet, r, 4))
@@ -178,6 +196,8 @@ def parse_load_distribution(path):
         th = get_cell_value(sheet, r, 6)
         pr = get_cell_value(sheet, r, 7)
         tot = get_cell_value(sheet, r, 10)
+        if tot is None or clean_text(tot) == "":
+            tot = get_cell_value(sheet, r, 8)
         
         if f_name:
             curr_faculty = f_name
@@ -188,9 +208,9 @@ def parse_load_distribution(path):
             continue
             
         try:
-            th_val = float(th) if th is not None else 0.0
-            pr_val = float(pr) if pr is not None else 0.0
-            tot_val = float(tot) if tot is not None else (th_val + pr_val)
+            th_val = float(th) if th is not None and str(th).strip() != "" else 0.0
+            pr_val = float(pr) if pr is not None and str(pr).strip() != "" else 0.0
+            tot_val = float(tot) if tot is not None and str(tot).strip() != "" else (th_val + pr_val)
         except ValueError:
             th_val, pr_val, tot_val = 0.0, 0.0, 0.0
             

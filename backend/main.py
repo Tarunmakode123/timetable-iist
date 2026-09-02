@@ -2,6 +2,8 @@ import os
 import hmac
 import hashlib
 import csv
+import io
+import openpyxl
 from io import StringIO
 from typing import List, Optional
 from datetime import datetime
@@ -580,82 +582,122 @@ def delete_load_distribution(load_id: int, admin: User = Depends(require_admin),
     db.commit()
     return {"message": "Load distribution entry deleted successfully"}
 
-# ----------------- CSV Import/Preview/Commit -----------------
+# ----------------- CSV & Excel Import/Preview/Commit -----------------
 
 @app.post("/api/csv/preview")
 async def upload_csv_preview(file: UploadFile = File(...), csv_type: str = Form(..., alias="type"), admin: User = Depends(require_admin)):
     content = await file.read()
-    decoded = content.decode('utf-8')
-    f = StringIO(decoded)
-    reader = csv.DictReader(f)
-    
     records = []
     errors = []
     
-    # Process line-by-line
-    for i, row in enumerate(reader):
-        line_num = i + 1
-        record = dict(row)
-        
-        # Basic validation depending on type
-        if csv_type == "assignments":
-            req_cols = ["faculty_id", "subject_id", "room_id", "timeslot_id", "effective_from"]
-            missing = [col for col in req_cols if col not in record or not record[col].strip()]
-            if missing:
-                errors.append(f"Row {line_num}: Missing column(s): {', '.join(missing)}")
-            else:
-                records.append({
-                    "faculty_id": record["faculty_id"].strip(),
-                    "subject_id": record["subject_id"].strip(),
-                    "section_id": record.get("section_id", "").strip() or None,
-                    "batch_id": record.get("batch_id", "").strip() or None,
-                    "room_id": record["room_id"].strip(),
-                    "timeslot_id": record["timeslot_id"].strip(),
-                    "effective_from": record["effective_from"].strip(),
-                    "effective_to": record.get("effective_to", "").strip() or None
-                })
-        elif csv_type == "faculty":
-            req_cols = ["id", "full_name"]
-            missing = [col for col in req_cols if col not in record or not record[col].strip()]
-            if missing:
-                errors.append(f"Row {line_num}: Missing column(s): {', '.join(missing)}")
-            else:
-                records.append({
-                    "id": record["id"].strip(),
-                    "full_name": record["full_name"].strip(),
-                    "known_initials": record.get("known_initials", "").strip() or None,
-                    "department": record.get("department", "").strip() or None,
-                    "max_weekly_hours": int(record.get("max_weekly_hours", "16").strip() or "16")
-                })
-        elif csv_type == "subjects":
-            req_cols = ["id", "code", "name", "type", "weekly_hours"]
-            missing = [col for col in req_cols if col not in record or not record[col].strip()]
-            if missing:
-                errors.append(f"Row {line_num}: Missing column(s): {', '.join(missing)}")
-            else:
-                records.append({
-                    "id": record["id"].strip(),
-                    "code": record["code"].strip(),
-                    "name": record["name"].strip(),
-                    "type": record["type"].strip(),
-                    "weekly_hours": int(record["weekly_hours"].strip() or "4"),
-                    "department": record.get("department", "").strip() or None
-                })
-        elif csv_type == "rooms":
-            req_cols = ["id", "name", "type", "capacity"]
-            missing = [col for col in req_cols if col not in record or not record[col].strip()]
-            if missing:
-                errors.append(f"Row {line_num}: Missing column(s): {', '.join(missing)}")
-            else:
-                records.append({
-                    "id": record["id"].strip(),
-                    "name": record["name"].strip(),
-                    "type": record["type"].strip(),
-                    "capacity": int(record["capacity"].strip() or "60")
-                })
+    filename_lower = file.filename.lower()
+    is_excel = filename_lower.endswith(".xlsx") or filename_lower.endswith(".xls") or content.startswith(b"PK\x03\x04")
+
+    if csv_type == "load_distribution":
+        if is_excel:
+            try:
+                wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
+                from backend.parser import parse_load_distribution
+                raw_recs = parse_load_distribution(wb)
+                for rec in raw_recs:
+                    records.append({
+                        "faculty_name": rec.get("faculty_name", ""),
+                        "subject_name": rec.get("subject_name", ""),
+                        "section_name": rec.get("section_name", ""),
+                        "semester": rec.get("semester", ""),
+                        "theory_hours": rec.get("theory_hours", 0.0),
+                        "practical_hours": rec.get("practical_hours", 0.0),
+                        "total_hours": rec.get("total_hours", 0.0)
+                    })
+            except Exception as ex:
+                errors.append(f"Failed to parse Excel workbook: {str(ex)}")
         else:
-            errors.append("Invalid CSV Import Type")
-            break
+            try:
+                decoded = content.decode('utf-8')
+                f = StringIO(decoded)
+                reader = csv.DictReader(f)
+                for i, row in enumerate(reader):
+                    rec = dict(row)
+                    records.append({
+                        "faculty_name": rec.get("faculty_name") or rec.get("Faculty Name", ""),
+                        "subject_name": rec.get("subject_name") or rec.get("Subject", ""),
+                        "section_name": rec.get("section_name") or rec.get("Section", ""),
+                        "semester": rec.get("semester") or rec.get("Semester", ""),
+                        "theory_hours": float(rec.get("theory_hours") or rec.get("TH") or 0.0),
+                        "practical_hours": float(rec.get("practical_hours") or rec.get("PR") or 0.0),
+                        "total_hours": float(rec.get("total_hours") or rec.get("TOT") or 0.0)
+                    })
+            except Exception as ex:
+                errors.append(f"Failed to parse CSV file: {str(ex)}")
+    else:
+        decoded = content.decode('utf-8')
+        f = StringIO(decoded)
+        reader = csv.DictReader(f)
+        
+        # Process line-by-line
+        for i, row in enumerate(reader):
+            line_num = i + 1
+            record = dict(row)
+            
+            # Basic validation depending on type
+            if csv_type == "assignments":
+                req_cols = ["faculty_id", "subject_id", "room_id", "timeslot_id", "effective_from"]
+                missing = [col for col in req_cols if col not in record or not record[col].strip()]
+                if missing:
+                    errors.append(f"Row {line_num}: Missing column(s): {', '.join(missing)}")
+                else:
+                    records.append({
+                        "faculty_id": record["faculty_id"].strip(),
+                        "subject_id": record["subject_id"].strip(),
+                        "section_id": record.get("section_id", "").strip() or None,
+                        "batch_id": record.get("batch_id", "").strip() or None,
+                        "room_id": record["room_id"].strip(),
+                        "timeslot_id": record["timeslot_id"].strip(),
+                        "effective_from": record["effective_from"].strip(),
+                        "effective_to": record.get("effective_to", "").strip() or None
+                    })
+            elif csv_type == "faculty":
+                req_cols = ["id", "full_name"]
+                missing = [col for col in req_cols if col not in record or not record[col].strip()]
+                if missing:
+                    errors.append(f"Row {line_num}: Missing column(s): {', '.join(missing)}")
+                else:
+                    records.append({
+                        "id": record["id"].strip(),
+                        "full_name": record["full_name"].strip(),
+                        "known_initials": record.get("known_initials", "").strip() or None,
+                        "department": record.get("department", "").strip() or None,
+                        "max_weekly_hours": int(record.get("max_weekly_hours", "16").strip() or "16")
+                    })
+            elif csv_type == "subjects":
+                req_cols = ["id", "code", "name", "type", "weekly_hours"]
+                missing = [col for col in req_cols if col not in record or not record[col].strip()]
+                if missing:
+                    errors.append(f"Row {line_num}: Missing column(s): {', '.join(missing)}")
+                else:
+                    records.append({
+                        "id": record["id"].strip(),
+                        "code": record["code"].strip(),
+                        "name": record["name"].strip(),
+                        "type": record["type"].strip(),
+                        "weekly_hours": int(record["weekly_hours"].strip() or "4"),
+                        "department": record.get("department", "").strip() or None
+                    })
+            elif csv_type == "rooms":
+                req_cols = ["id", "name", "type", "capacity"]
+                missing = [col for col in req_cols if col not in record or not record[col].strip()]
+                if missing:
+                    errors.append(f"Row {line_num}: Missing column(s): {', '.join(missing)}")
+                else:
+                    records.append({
+                        "id": record["id"].strip(),
+                        "name": record["name"].strip(),
+                        "type": record["type"].strip(),
+                        "capacity": int(record["capacity"].strip() or "60")
+                    })
+            else:
+                errors.append("Invalid CSV Import Type")
+                break
             
     return {
         "filename": file.filename,
@@ -664,6 +706,7 @@ async def upload_csv_preview(file: UploadFile = File(...), csv_type: str = Form(
         "valid_count": len(records),
         "error_count": len(errors),
         "errors": errors,
+        "records": records,
         "preview": records[:50] # Limit preview rows
     }
 
@@ -678,7 +721,24 @@ def commit_csv_import(req: dict, admin: User = Depends(require_admin), db: Sessi
     committed_count = 0
     
     try:
-        if type == "assignments":
+        if type == "load_distribution":
+            db.query(LoadDistribution).delete()
+            for r in records:
+                th = float(r.get("theory_hours") or 0.0)
+                pr = float(r.get("practical_hours") or 0.0)
+                tot = float(r.get("total_hours") or (th + pr))
+                entry = LoadDistribution(
+                    faculty_name=r.get("faculty_name", ""),
+                    subject_name=r.get("subject_name", ""),
+                    section_name=r.get("section_name", ""),
+                    semester=r.get("semester", ""),
+                    theory_hours=th,
+                    practical_hours=pr,
+                    total_hours=tot
+                )
+                db.add(entry)
+                committed_count += 1
+        elif type == "assignments":
             for r in records:
                 # Upsert/Insert assignment
                 assign = Assignment(
