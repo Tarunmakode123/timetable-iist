@@ -134,7 +134,7 @@
                 <div id="login-error" class="hidden text-red-500 text-sm text-center"></div>
 
                 <div>
-                    <button type="submit" id="login-submit-btn" class="group relative w-full flex justify-center py-2.5 px-4 border border-transparent text-sm font-bold rounded-xl text-white bg-[#E8590C] hover:bg-[#C74805] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#E8590C] transition shadow-sm">
+                    <button type="submit" id="login-submit-btn" onclick="event.preventDefault(); handleLogin(event);" class="group relative w-full flex justify-center py-2.5 px-4 border border-transparent text-sm font-bold rounded-xl text-white bg-[#E8590C] hover:bg-[#C74805] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#E8590C] transition shadow-sm">
                         Sign In
                     </button>
                 </div>
@@ -784,18 +784,22 @@
         }
 
         async function initApp() {
-            // Support auto-login if credentials are present in URL query params
+            // Safely pre-fill credentials if passed in URL query params without recursive calls
             const urlParams = new URLSearchParams(window.location.search);
             const urlUser = urlParams.get("username");
             const urlPass = urlParams.get("password");
             
-            if (urlUser && urlPass && !userToken) {
-                document.getElementById("username").value = urlUser;
-                document.getElementById("password").value = urlPass;
+            if (urlUser || urlPass) {
+                const uInput = document.getElementById("username");
+                const pInput = document.getElementById("password");
+                if (uInput && urlUser) uInput.value = urlUser;
+                if (pInput && urlPass) pInput.value = urlPass;
                 window.history.replaceState({}, document.title, window.location.pathname);
-                await handleLogin();
-                return;
             }
+
+            userToken = localStorage.getItem("token") || "";
+            userRole = localStorage.getItem("role") || "";
+            userFacultyId = localStorage.getItem("faculty_id") || "";
 
             if (!userToken) {
                 showView("login-screen");
