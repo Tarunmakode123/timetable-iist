@@ -165,6 +165,8 @@ def parse_grid_cell(room_val, subject_val, faculty_val):
 def parse_load_distribution(path_or_wb):
     if isinstance(path_or_wb, openpyxl.Workbook):
         wb = path_or_wb
+    elif isinstance(path_or_wb, (bytes, io.BytesIO)):
+        wb = openpyxl.load_workbook(path_or_wb if isinstance(path_or_wb, io.BytesIO) else io.BytesIO(path_or_wb), data_only=True)
     else:
         wb = openpyxl.load_workbook(path_or_wb, data_only=True)
     
@@ -179,6 +181,7 @@ def parse_load_distribution(path_or_wb):
     records = []
     curr_faculty = ""
     curr_semester = ""
+    curr_section = ""
     
     # Locate header row dynamically if possible
     start_row = 6
@@ -199,12 +202,16 @@ def parse_load_distribution(path_or_wb):
         if tot is None or clean_text(tot) == "":
             tot = get_cell_value(sheet, r, 8)
         
+        # Forward fill Faculty Name, Semester, and Section from previous non-empty rows
         if f_name:
             curr_faculty = f_name
         if sem:
             curr_semester = sem
+        if sec:
+            curr_section = sec
             
-        if not sec or not sub:
+        # FORMAT RULE: Parse one record per row where SUBJECT column is non-empty
+        if not sub:
             continue
             
         try:
@@ -217,7 +224,7 @@ def parse_load_distribution(path_or_wb):
         records.append({
             "faculty_name": curr_faculty,
             "semester": curr_semester,
-            "section_name": sec,
+            "section_name": sec or curr_section,
             "subject_name": sub,
             "theory_hours": th_val,
             "practical_hours": pr_val,
