@@ -68,16 +68,18 @@ def find_best_faculty_match(prompt: str, faculties: list):
             
     return best_faculty
 
+ACTION_KEYWORDS = ["move", "shift", "change", "cancel", "delete", "add", "swap", "edit", "put", "set", "assign", "place", "insert"]
+
 def process_ai_request(prompt: str, db: Session) -> Dict[str, Any]:
     prompt_lower = prompt.lower().strip()
 
     # 1. QUERY MODE (READ-ONLY)
     if re.search(r'\b(what|show|list|schedule|who|where|how\s+many|is|are|can|check|give)\b', prompt_lower):
-        if not any(a in prompt_lower for a in ["move", "shift", "change", "cancel", "delete", "add", "swap"]):
+        if not any(a in prompt_lower for a in ACTION_KEYWORDS):
             return handle_query_intent(prompt_lower, db)
 
     # 2. ACTION MODE (MUTATIONS & EDITS)
-    if any(a in prompt_lower for a in ["move", "shift", "change", "cancel", "delete", "add", "swap"]):
+    if any(a in prompt_lower for a in ACTION_KEYWORDS):
         return handle_action_intent(prompt_lower, db)
 
     # Fallback search as query mode
@@ -226,6 +228,13 @@ def handle_action_intent(prompt: str, db: Session) -> Dict[str, Any]:
     rooms = db.query(Room).all()
     timeslots = db.query(TimeSlot).all()
 
+    # Extract days and period numbers from prompt
+    days_map = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
+    found_days = [d.capitalize() for d in days_map if d in prompt.lower()]
+    periods = re.findall(r'\b(?:period|p)\s*([1-8])\b', prompt, re.IGNORECASE)
+    if not periods:
+        periods = re.findall(r'\b([1-8])\b', prompt)
+
     # Match faculty or section mentioned
     target_fac = find_best_faculty_match(prompt, faculties)
 
@@ -263,8 +272,8 @@ def handle_action_intent(prompt: str, db: Session) -> Dict[str, Any]:
             }
         }
 
-    # Action 2: Move / Shift class
-    if "move" in prompt or "shift" in prompt or "change" in prompt:
+    # Action 2: Move / Shift / Edit / Put / Set / Assign class
+    if any(k in prompt for k in ["move", "shift", "change", "put", "edit", "set", "assign", "place", "insert"]):
         # Advanced regex extraction for explicit "from ... to ..."
         to_slot_match = re.search(r'\bto\s+([a-zA-Z]+)?(?:\s*(?:period|p)\s*|\s*[_]?)([1-8])\b', prompt, re.IGNORECASE)
         from_slot_match = re.search(r'\bfrom\s+([a-zA-Z]+)?(?:\s*(?:period|p)\s*|\s*[_]?)([1-8])\b', prompt, re.IGNORECASE)
