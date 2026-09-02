@@ -164,94 +164,137 @@
 
         <!-- Main Body -->
         <main class="flex-grow max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col xl:flex-row gap-6">
-            <!-- Column 1: Sidebar Controls & Conflicts -->
-            <div id="column-sidebar" class="w-full xl:w-1/5 flex flex-col gap-6">
-                <!-- Controls Card -->
+            <!-- Column 1: Primary Controls & Actions -->
+            <div id="column-sidebar" class="w-full xl:w-1/4 flex flex-col gap-6">
+                <!-- HERO START CTA: Upload Load Distribution -->
+                <div class="bg-gradient-to-br from-[#E8590C] to-[#C74805] p-5 rounded-2xl text-white shadow-md space-y-3">
+                    <div class="flex items-center space-x-2.5 font-heading font-bold text-base">
+                        <div class="bg-white/20 p-2 rounded-xl">
+                            <i class="fa-solid fa-cloud-arrow-up text-lg"></i>
+                        </div>
+                        <span>Upload Load Distribution</span>
+                    </div>
+                    <p class="text-xs text-orange-100 leading-relaxed">
+                        Select your institution's Load Distribution Excel sheet (.xlsx / .csv). Uploading automatically generates all 3 timetables!
+                    </p>
+                    <button id="upload-load-dist-btn" class="w-full bg-white text-[#E8590C] hover:bg-[#FFE8D6] font-bold py-3 px-4 rounded-xl text-xs transition shadow-sm flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-file-excel text-[#E8590C] text-sm"></i>
+                        <span>Upload Load Distribution Sheet</span>
+                    </button>
+                </div>
+
+                <!-- Schedule View & Target Selection Card -->
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-[#EFEBE6] space-y-4">
-                    <h3 class="font-heading font-bold text-base text-[#211C1A] border-b border-[#FAF8F5] pb-2.5">Schedule View</h3>
+                    <h3 class="font-heading font-bold text-base text-[#211C1A] border-b border-[#FAF8F5] pb-2.5 flex items-center justify-between">
+                        <span>Timetable Views</span>
+                        <span id="active-view-tag" class="text-[10px] bg-[#FFE8D6] text-[#E8590C] px-2 py-0.5 rounded-full font-bold uppercase">Section-wise</span>
+                    </h3>
                     
                     <div>
-                        <label class="block text-[11px] font-bold text-[#6B6259] uppercase tracking-wider mb-2">View Type</label>
-                        <select id="view-type-select" class="w-full border border-[#EFEBE6] rounded-xl p-2.5 text-xs bg-white focus:ring-[#E8590C] focus:border-[#E8590C] transition">
-                            <option value="section">Section-wise View</option>
-                            <option value="faculty">Faculty-wise View</option>
-                            <option value="room">Room-wise View</option>
-                            <option value="master_load">Master Load Distribution Data</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-[11px] font-bold text-[#6B6259] uppercase tracking-wider mb-2">Select Target Item</label>
-                        <select id="view-item-select" class="w-full border border-[#EFEBE6] rounded-xl p-2.5 text-xs bg-white focus:ring-[#E8590C] focus:border-[#E8590C] transition">
+                        <label class="block text-[11px] font-bold text-[#6B6259] uppercase tracking-wider mb-2">Select Target Entity</label>
+                        <select id="view-item-select" class="w-full border border-[#EFEBE6] rounded-xl p-2.5 text-xs bg-white font-semibold text-[#211C1A] focus:ring-[#E8590C] focus:border-[#E8590C] transition shadow-sm">
                             <!-- Populated dynamically -->
                         </select>
                     </div>
 
-                    <div class="admin-only pt-3 border-t border-[#EFEBE6] space-y-3">
-                        <label class="block text-[11px] font-bold text-[#6B6259] uppercase tracking-wider mb-1">Primary System Action</label>
-                        
-                        <!-- HERO START CTA: Upload Load Distribution -->
-                        <div class="bg-gradient-to-br from-[#E8590C] to-[#C74805] p-4 rounded-xl text-white shadow-sm space-y-2.5">
-                            <div class="flex items-center space-x-2 font-heading font-bold text-sm">
-                                <div class="bg-white/20 p-1.5 rounded-lg">
-                                    <i class="fa-solid fa-cloud-arrow-up text-base"></i>
-                                </div>
-                                <span>Upload Load Distribution</span>
-                            </div>
-                            <p class="text-[11px] text-orange-100 leading-snug">
-                                Primary action to populate workload demand and drive timetable generation.
-                            </p>
-                            <button id="upload-load-dist-btn" class="w-full bg-white text-[#E8590C] hover:bg-[#FFE8D6] font-bold py-2.5 px-3 rounded-lg text-xs transition shadow-sm flex items-center justify-center space-x-2">
-                                <i class="fa-solid fa-file-excel text-[#E8590C]"></i>
-                                <span>Upload Load Distribution Sheet</span>
-                            </button>
+                    <!-- Hidden legacy select kept for backward compat -->
+                    <select id="view-type-select" class="hidden">
+                        <option value="section">Section-wise View</option>
+                        <option value="faculty">Faculty-wise View</option>
+                        <option value="room">Room-wise View</option>
+                        <option value="master_load">Master Load Distribution Data</option>
+                    </select>
+                </div>
+
+                <!-- Collapsible Advanced & Developer Settings -->
+                <details class="admin-only bg-[#FAF8F5] p-4 rounded-2xl border border-[#EFEBE6] space-y-3 transition">
+                    <summary class="cursor-pointer font-heading font-bold text-xs text-[#6B6259] flex items-center justify-between select-none">
+                        <span><i class="fa-solid fa-gears mr-1.5 text-[#E8590C]"></i> Advanced / Developer Tools</span>
+                        <i class="fa-solid fa-chevron-down text-[10px]"></i>
+                    </summary>
+
+                    <div class="pt-3 border-t border-[#EFEBE6] space-y-2.5">
+                        <div id="date-version-panel" class="flex flex-col space-y-1">
+                            <label class="text-[10px] text-[#6B6259] font-bold uppercase tracking-wider">Date Version Baseline:</label>
+                            <select id="date-version-select" class="w-full border border-[#EFEBE6] rounded-lg p-2 text-xs bg-white">
+                                <option value="2024-09-30">Legacy Baseline (30.09.24)</option>
+                                <option value="2024-11-18">Legacy Revision (18.11.24)</option>
+                            </select>
                         </div>
 
-                        <label class="block text-[11px] font-bold text-[#6B6259] uppercase tracking-wider pt-2 mb-1">Solver & Seed Management</label>
-                        <button id="auto-solve-btn" class="w-full bg-[#E8590C] text-white hover:bg-[#C74805] px-4 py-2.5 rounded-xl text-xs font-bold transition text-left flex items-center justify-between shadow-sm">
+                        <button id="auto-solve-btn" class="w-full bg-[#E8590C] text-white hover:bg-[#C74805] px-3 py-2 rounded-xl text-xs font-bold transition text-left flex items-center justify-between shadow-sm">
                             <span><i class="fa-solid fa-wand-magic-sparkles mr-2"></i> CP-SAT Auto-Generate</span>
                             <i class="fa-solid fa-play text-xs"></i>
                         </button>
-                        <button id="seed-btn" class="w-full bg-[#FFE8D6] text-[#E8590C] hover:bg-orange-100 px-4 py-2.5 rounded-xl text-xs font-bold transition text-left flex items-center justify-between">
+                        <button id="seed-btn" class="w-full bg-[#FFE8D6] text-[#E8590C] hover:bg-orange-100 px-3 py-2 rounded-xl text-xs font-bold transition text-left flex items-center justify-between">
                             <span><i class="fa-solid fa-database mr-2"></i> Seed Legacy Excel</span>
                             <i class="fa-solid fa-chevron-right text-xs"></i>
                         </button>
-                        <button id="add-assignment-btn" class="w-full bg-[#211C1A] text-white hover:bg-black px-4 py-2 rounded-xl text-xs font-medium transition text-left flex items-center justify-between">
+                        <button id="add-assignment-btn" class="w-full bg-[#211C1A] text-white hover:bg-black px-3 py-2 rounded-xl text-xs font-medium transition text-left flex items-center justify-between">
                             <span><i class="fa-solid fa-plus mr-2"></i> Add Manual Entry</span>
                             <i class="fa-solid fa-plus text-xs"></i>
                         </button>
-                        <button id="upload-csv-btn" class="w-full bg-[#FAF8F5] text-[#211C1A] hover:bg-[#EFEBE6] px-4 py-2 rounded-xl text-xs font-medium transition text-left flex items-center justify-between border border-[#EFEBE6]">
-                            <span><i class="fa-solid fa-file-csv mr-2"></i> Bulk CSV Import (Faculty/Rooms)</span>
+                        <button id="upload-csv-btn" class="w-full bg-white text-[#211C1A] hover:bg-[#EFEBE6] px-3 py-2 rounded-xl text-xs font-medium transition text-left flex items-center justify-between border border-[#EFEBE6]">
+                            <span><i class="fa-solid fa-file-csv mr-2"></i> Bulk CSV Import</span>
                             <i class="fa-solid fa-upload text-xs"></i>
                         </button>
+                        <button onclick="switchToMasterLoadView()" class="w-full bg-white text-[#211C1A] hover:bg-[#EFEBE6] px-3 py-2 rounded-xl text-xs font-medium transition text-left flex items-center justify-between border border-[#EFEBE6]">
+                            <span><i class="fa-solid fa-table-list mr-2"></i> Review Master Load Data</span>
+                            <i class="fa-solid fa-chevron-right text-xs"></i>
+                        </button>
                     </div>
-                </div>
+                </details>
 
-                <!-- Validation Panel Card -->
-                <div class="bg-white p-5 rounded-2xl shadow-sm border border-[#EFEBE6] flex-grow flex flex-col min-h-[250px]">
+                <!-- Validation Panel Card (Hidden when 0 conflicts) -->
+                <div id="validation-panel-container" class="hidden bg-white p-5 rounded-2xl shadow-sm border border-[#EFEBE6] flex-col min-h-[180px]">
                     <div class="flex items-center justify-between border-b border-[#FAF8F5] pb-2.5 mb-3">
-                        <h3 class="font-heading font-bold text-base text-[#211C1A]">Validation Panel</h3>
+                        <h3 class="font-heading font-bold text-sm text-[#211C1A]">Validation Review</h3>
                         <span id="conflict-badge" class="bg-green-50 text-[#16A34A] border border-green-200 text-xs px-2.5 py-0.5 rounded-full font-bold">No Conflicts</span>
                     </div>
 
-                    <div id="conflict-list" class="overflow-y-auto max-h-[350px] flex-grow space-y-2.5 pr-1 text-xs">
+                    <div id="conflict-list" class="overflow-y-auto max-h-[250px] flex-grow space-y-2.5 pr-1 text-xs">
                         <!-- Populated dynamically -->
                     </div>
                 </div>
             </div>
 
             <!-- Column 2: Main Grid View -->
-            <div id="column-grid" class="flex-grow xl:w-3/5 bg-white p-6 rounded-2xl shadow-sm border border-[#EFEBE6] flex flex-col">
-                <!-- Master Data Out-of-Sync Banner -->
+            <div id="column-grid" class="flex-grow xl:w-2/4 bg-white p-6 rounded-2xl shadow-sm border border-[#EFEBE6] flex flex-col">
+                <!-- 3 Primary Timetable View Navigation Tabs -->
+                <div id="main-view-tabs" class="flex flex-wrap items-center justify-between gap-3 border-b border-[#EFEBE6] pb-4 mb-4">
+                    <div class="flex items-center space-x-2">
+                        <button id="tab-section" onclick="switchMainTab('section')" class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-2 bg-[#E8590C] text-white shadow-sm">
+                            <i class="fa-solid fa-graduation-cap"></i>
+                            <span>Section-wise Timetable</span>
+                        </button>
+                        <button id="tab-faculty" onclick="switchMainTab('faculty')" class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-2 bg-[#FAF8F5] text-[#211C1A] hover:bg-[#FFE8D6] border border-[#EFEBE6]">
+                            <i class="fa-solid fa-user-tie"></i>
+                            <span>Faculty-wise Timetable</span>
+                        </button>
+                        <button id="tab-room" onclick="switchMainTab('room')" class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-2 bg-[#FAF8F5] text-[#211C1A] hover:bg-[#FFE8D6] border border-[#EFEBE6]">
+                            <i class="fa-solid fa-door-open"></i>
+                            <span>Room / Lab-wise Timetable</span>
+                        </button>
+                    </div>
+
+                    <div id="export-controls" class="flex items-center space-x-2">
+                        <button id="export-pdf-btn" class="bg-white hover:bg-[#FAF8F5] text-[#211C1A] text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#EFEBE6] transition shadow-sm flex items-center space-x-1.5">
+                            <i class="fa-solid fa-file-pdf text-red-600"></i>
+                            <span>Export PDF</span>
+                        </button>
+                        <button id="export-word-btn" class="bg-white hover:bg-[#FAF8F5] text-[#211C1A] text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#EFEBE6] transition shadow-sm flex items-center space-x-1.5">
+                            <i class="fa-solid fa-file-word text-blue-600"></i>
+                            <span>Export Word</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Master Data Out-of-Sync Banner (Hidden from default view) -->
                 <div id="master-stale-banner" class="hidden bg-amber-50 border-l-4 border-amber-500 p-3.5 rounded-r-xl mb-4 text-xs flex justify-between items-center transition shadow-sm">
                     <div class="flex items-center space-x-2 text-amber-900 font-medium">
                         <i class="fa-solid fa-triangle-exclamation text-amber-600 text-sm"></i>
-                        <span><strong>Master Data Out of Sync:</strong> Load Distribution data has changed since this timetable was generated.</span>
+                        <span><strong>Master Data Modified:</strong> Timetable will auto-update on next generation.</span>
                     </div>
-                    <button onclick="handleAutoSolve()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-1.5 rounded-lg transition text-xs shadow-sm flex items-center space-x-1.5">
-                        <i class="fa-solid fa-arrows-rotate"></i>
-                        <span>Regenerate Now</span>
-                    </button>
                 </div>
 
                 <!-- Status Banner for Dataset Mode -->
@@ -271,27 +314,6 @@
                     <div>
                         <h2 id="grid-title" class="font-heading text-xl font-bold text-[#211C1A]">CS-1 II Year Timetable</h2>
                         <p id="grid-subtitle" class="text-xs text-[#6B6259] mt-1 font-medium">Select a filter type to display schedule details</p>
-                    </div>
-                    
-                    <div class="flex items-center space-x-2">
-                        <div id="export-controls" class="flex items-center space-x-2">
-                            <button id="export-pdf-btn" class="bg-white hover:bg-[#FAF8F5] text-[#211C1A] text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#EFEBE6] transition shadow-sm flex items-center space-x-1.5">
-                                <i class="fa-solid fa-file-pdf text-red-600"></i>
-                                <span>Export PDF</span>
-                            </button>
-                            <button id="export-word-btn" class="bg-white hover:bg-[#FAF8F5] text-[#211C1A] text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#EFEBE6] transition shadow-sm flex items-center space-x-1.5">
-                                <i class="fa-solid fa-file-word text-blue-600"></i>
-                                <span>Export Word</span>
-                            </button>
-                        </div>
-
-                        <div id="date-version-panel" class="hidden flex items-center space-x-2">
-                            <span class="text-[11px] text-[#6B6259] font-bold uppercase tracking-wider">Date Version:</span>
-                            <select id="date-version-select" class="border border-[#EFEBE6] rounded-lg px-2.5 py-1 text-xs bg-white focus:outline-none">
-                                <option value="2024-09-30">Grid (30.09.24)</option>
-                                <option value="2024-11-18">Grid (18.11.24)</option>
-                            </select>
-                        </div>
                     </div>
                 </div>
 
@@ -985,6 +1007,34 @@
             }
         }
 
+        function switchMainTab(viewName) {
+            selectedView = viewName;
+            document.getElementById("view-type-select").value = viewName;
+
+            ["section", "faculty", "room"].forEach(t => {
+                const btn = document.getElementById(`tab-${t}`);
+                if (!btn) return;
+                if (t === viewName) {
+                    btn.className = "px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-2 bg-[#E8590C] text-white shadow-sm";
+                } else {
+                    btn.className = "px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-2 bg-[#FAF8F5] text-[#211C1A] hover:bg-[#FFE8D6] border border-[#EFEBE6]";
+                }
+            });
+
+            const activeTag = document.getElementById("active-view-tag");
+            if (activeTag) {
+                activeTag.innerText = viewName === "section" ? "Section-wise" : (viewName === "faculty" ? "Faculty-wise" : "Room-wise");
+            }
+
+            populateViewItems();
+        }
+
+        function switchToMasterLoadView() {
+            selectedView = "master_load";
+            document.getElementById("view-type-select").value = "master_load";
+            renderMasterLoadTable();
+        }
+
         function markMasterDataStale() {
             isMasterDataStale = true;
             document.getElementById("master-stale-banner").classList.remove("hidden");
@@ -1010,9 +1060,18 @@
         function updateGridStatusBanner() {
             const banner = document.getElementById("grid-status-banner");
             const statusText = document.getElementById("grid-status-text");
+            const valPanelContainer = document.getElementById("validation-panel-container");
             
             const totalConflicts = activeConflicts.length;
             const hardConflicts = activeConflicts.filter(c => c.severity === "error" || c.severity === "hard").length;
+            
+            if (valPanelContainer) {
+                if (totalConflicts === 0) {
+                    valPanelContainer.classList.add("hidden");
+                } else {
+                    valPanelContainer.classList.remove("hidden");
+                }
+            }
             
             if (totalConflicts === 0) {
                 banner.className = "bg-emerald-50 border-l-4 border-emerald-500 p-3 rounded-r-lg mb-4 text-xs flex justify-between items-center transition shadow-sm";
@@ -1660,6 +1719,11 @@
         async function handleCSVCommit() {
             if (!csvParsedData || csvParsedData.valid_count === 0) return;
             
+            const btn = document.getElementById("csv-commit-btn");
+            const origText = btn.innerText;
+            btn.disabled = true;
+            btn.innerText = "Processing & Generating Timetables...";
+
             try {
                 const recordsToCommit = csvParsedData.records || csvParsedData.preview;
                 const res = await fetch(`${API_URL}/api/csv/commit`, {
@@ -1677,13 +1741,32 @@
                 }
                 
                 const data = await res.json();
-                alert(`Successfully imported ${data.count || recordsToCommit.length} records!`);
                 closeModal("csv-modal");
 
                 if (csvParsedData.type === "load_distribution") {
-                    markMasterDataStale();
+                    // AUTOMATED SOLVER STEP: Trigger CP-SAT Solver directly on upload!
+                    const solveRes = await fetch(`${API_URL}/api/ai/solve`, {
+                        method: "POST",
+                        headers: getAuthHeaders(),
+                        body: JSON.stringify({})
+                    });
+
+                    if (solveRes.ok) {
+                        const solveData = await solveRes.json();
+                        isMasterDataStale = false;
+                        document.getElementById("master-stale-banner").classList.add("hidden");
+                        
+                        await fetchAllData();
+                        updateDateVersionOptions(true); // Switch to newly generated version!
+                        
+                        switchMainTab("section");
+                        fetchConflicts();
+
+                        alert(`🎉 Success! Uploaded Load Distribution and generated ${solveData.assignments.length} conflict-free assignments across all 3 timetables.`);
+                        return;
+                    }
                 }
-                
+
                 await fetchAllData();
                 fetchConflicts();
                 if (selectedView === "master_load") {
@@ -1691,6 +1774,9 @@
                 }
             } catch (err) {
                 alert(err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = origText;
             }
         }
 
