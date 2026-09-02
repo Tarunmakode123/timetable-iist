@@ -134,7 +134,7 @@
                 <div id="login-error" class="hidden text-red-500 text-sm text-center"></div>
 
                 <div>
-                    <button type="button" id="login-submit-btn" onclick="event.preventDefault(); handleLogin(event);" class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500">
+                    <button type="submit" id="login-submit-btn" class="group relative w-full flex justify-center py-2.5 px-4 border border-transparent text-sm font-bold rounded-xl text-white bg-[#E8590C] hover:bg-[#C74805] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#E8590C] transition shadow-sm">
                         Sign In
                     </button>
                 </div>
@@ -828,10 +828,14 @@
         }
 
         async function handleLogin(e) {
-            if (e) e.preventDefault();
+            if (e && typeof e.preventDefault === "function") {
+                e.preventDefault();
+            }
             const usernameInput = document.getElementById("username").value.trim();
             const passwordInput = document.getElementById("password").value.trim();
             const errorDiv = document.getElementById("login-error");
+            const submitBtn = document.getElementById("login-submit-btn");
+            const originalBtnHtml = submitBtn ? submitBtn.innerHTML : "Sign In";
             
             errorDiv.classList.add("hidden");
             if (!usernameInput || !passwordInput) {
@@ -840,6 +844,11 @@
                 errorDiv.classList.remove("hidden");
                 showToast(msg, "error");
                 return;
+            }
+            
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = `<span><i class="fa-solid fa-spinner animate-spin mr-2"></i> Signing In...</span>`;
             }
             
             try {
@@ -873,11 +882,16 @@
                 localStorage.setItem("faculty_id", userFacultyId);
                 
                 showToast(`Welcome back, ${data.username}! Logged in successfully.`, "success");
-                initApp();
+                await initApp();
             } catch (err) {
                 errorDiv.innerText = err.message;
                 errorDiv.classList.remove("hidden");
                 showToast(`Login Failed: ${err.message}`, "error");
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalBtnHtml;
+                }
             }
         }
 
@@ -901,15 +915,28 @@
                     fetch(`${API_URL}/api/load-distribution`, { headers: getAuthHeaders() })
                 ]);
                 
-                allFaculty = await facRes.json();
-                allSubjects = await subRes.json();
-                allRooms = await roomRes.json();
-                allSections = await secRes.json();
-                allTimeSlots = await tsRes.json();
-                allAssignments = await assignRes.json();
-                if (loadRes.ok) {
-                    allLoadDistribution = await loadRes.json();
+                if (facRes.status === 401 || secRes.status === 401) {
+                    handleLogout();
+                    showToast("Session expired or invalid. Please sign in again.", "error");
+                    return;
                 }
+
+                const facData = facRes.ok ? await facRes.json() : [];
+                const subData = subRes.ok ? await subRes.json() : [];
+                const roomData = roomRes.ok ? await roomRes.json() : [];
+                const secData = secRes.ok ? await secRes.json() : [];
+                const tsData = tsRes.ok ? await tsRes.json() : [];
+                const assignData = assignRes.ok ? await assignRes.json() : [];
+                const loadData = (loadRes && loadRes.ok) ? await loadRes.json() : [];
+
+                allFaculty = Array.isArray(facData) ? facData : [];
+                allSubjects = Array.isArray(subData) ? subData : [];
+                allRooms = Array.isArray(roomData) ? roomData : [];
+                allSections = Array.isArray(secData) ? secData : [];
+                allTimeSlots = Array.isArray(tsData) ? tsData : [];
+                allAssignments = Array.isArray(assignData) ? assignData : [];
+                allLoadDistribution = Array.isArray(loadData) ? loadData : [];
+
                 updateDateVersionOptions();
             } catch (err) {
                 console.error("Error fetching data", err);
