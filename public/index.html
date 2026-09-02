@@ -595,6 +595,14 @@
             const container = document.getElementById("toast-container");
             if (!container) return;
 
+            // Bulletproof Toast Deduplication: Drop duplicate toast messages within 3 seconds
+            const now = Date.now();
+            if (container.dataset.lastToastMsg === message && (now - (parseInt(container.dataset.lastToastTime) || 0)) < 3000) {
+                return;
+            }
+            container.dataset.lastToastMsg = message;
+            container.dataset.lastToastTime = now;
+
             const toast = document.createElement("div");
             toast.className = `pointer-events-auto flex items-start space-x-3 p-4 rounded-xl shadow-lg border bg-white transition-all duration-300 transform translate-x-full opacity-0 max-w-md ${
                 type === "success"
