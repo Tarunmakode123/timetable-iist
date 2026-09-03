@@ -74,61 +74,14 @@ def solve_timetable(
 
     generated_assignments = list(pinned_assignments)
 
-def resolve_section(sec_name: str, sem_code: str, sections: list) -> Optional[Section]:
-    if not sec_name and not sem_code:
+def resolve_section(sec_name: str, sem_code: Optional[str], sections: List[Section]) -> Optional[Section]:
+    from backend.section_normalizer import normalize_section_entry
+    cids = normalize_section_entry(sec_name, sem_code)
+    if not cids:
         return None
-    cleaned_sec = (sec_name or "").strip().upper().replace(" ", "").replace("_", "").replace("-", "")
-    cleaned_sem = (sem_code or "").strip().upper().replace(" ", "").replace("_", "").replace("-", "")
     
-    # Determine year suffix: "_2" for 3rd semester / 2nd year (300-level), "_3" for 5th semester / 3rd year (500-level)
-    year_suffix = "_2"
-    if "50" in cleaned_sem or "5" in cleaned_sem or "DE" in cleaned_sem or "OE" in cleaned_sem:
-        year_suffix = "_3"
-    elif "70" in cleaned_sem or "7" in cleaned_sem or "BT205" in cleaned_sem:
-        year_suffix = "_4"
-
-    # Handle CSE-1, CSE-2, CSE-3, CSE section name variations
-    if "CSE1" in cleaned_sec or "CS1" in cleaned_sec or "CS-1" in cleaned_sec:
-        target_id = f"CS-1{year_suffix}"
-        sec = next((s for s in sections if s.id == target_id), None) or next((s for s in sections if s.id.startswith("CS-1")), None)
-        if sec: return sec
-    if "CSE2" in cleaned_sec or "CS2" in cleaned_sec or "CS-2" in cleaned_sec:
-        target_id = f"CS-2{year_suffix}"
-        sec = next((s for s in sections if s.id == target_id), None) or next((s for s in sections if s.id.startswith("CS-2")), None)
-        if sec: return sec
-    if "CSE3" in cleaned_sec or "CS3" in cleaned_sec or "CS-3" in cleaned_sec:
-        target_id = f"CS-3{year_suffix}"
-        sec = next((s for s in sections if s.id == target_id), None) or next((s for s in sections if s.id.startswith("CS-3")), None)
-        if sec: return sec
-    if cleaned_sec in ["CSE", "CS"]:
-        target_id = f"CS-1{year_suffix}"
-        sec = next((s for s in sections if s.id == target_id), None) or next((s for s in sections if s.id.startswith("CS-1")), None)
-        if sec: return sec
-    if "IT" in cleaned_sec:
-        target_id = f"IT{year_suffix}"
-        sec = next((s for s in sections if s.id == target_id), None) or next((s for s in sections if s.id.startswith("IT")), None)
-        if sec: return sec
-    if "AIML" in cleaned_sec:
-        target_id = f"AIML{year_suffix}"
-        sec = next((s for s in sections if s.id == target_id), None) or next((s for s in sections if s.id.startswith("AIML")), None)
-        if sec: return sec
-    if "DS" in cleaned_sec or "DATASCIENCE" in cleaned_sec:
-        target_id = f"DS{year_suffix}"
-        sec = next((s for s in sections if s.id == target_id), None) or next((s for s in sections if s.id.startswith("DS")), None)
-        if sec: return sec
-    if "IOT" in cleaned_sec:
-        target_id = f"IoT{year_suffix}"
-        sec = next((s for s in sections if s.id == target_id), None) or next((s for s in sections if s.id.startswith("IoT")), None)
-        if sec: return sec
-    if "ME" in cleaned_sec or "MECH" in cleaned_sec:
-        sec = next((s for s in sections if "ME" in s.id or "Mech" in s.id), None)
-        if sec: return sec
-        
-    for s in sections:
-        s_clean = s.id.strip().upper().replace(" ", "").replace("_", "").replace("-", "")
-        if s_clean in cleaned_sec or cleaned_sec in s_clean:
-            return s
-    return None
+    first_cid = cids[0]
+    return next((s for s in sections if s.id == first_cid), None)
 
 def solve_timetable(
     db: Session,
@@ -219,8 +172,11 @@ def solve_timetable(
                     matched_subject = sub
                     break
 
-        fac_id = matched_faculty.id if matched_faculty else (faculties[0].id if faculties else "FAC_DEFAULT")
-        sec_id = matched_section.id if matched_section else (sections[0].id if sections else "SEC_DEFAULT")
+        if not matched_faculty or not matched_section:
+            continue
+
+        fac_id = matched_faculty.id
+        sec_id = matched_section.id
         sub_id = matched_subject.id if matched_subject else (subjects[0].id if subjects else "SUB_DEFAULT")
 
         th_hours = int(round(entry.theory_hours or 0))

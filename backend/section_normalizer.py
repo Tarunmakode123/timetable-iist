@@ -46,11 +46,14 @@ RAW_VARIANT_MAP = {
 def determine_year_from_semester(semester_str: Optional[str]) -> int:
     if not semester_str:
         return 2
-    s_lower = str(semester_str).lower().strip()
-    if any(k in s_lower for k in ["v", "vi", "5th", "6th", "iii year", "3rd year", "3rd yr"]):
-        return 3
-    if any(k in s_lower for k in ["vii", "viii", "7th", "8th", "iv year", "4th year"]):
+    s = str(semester_str).lower().strip()
+    
+    if any(k in s for k in ["7th", "8th", "vii", "viii", "4th year", "iv year"]) or re.search(r'\b(7\d\d|8\d\d)\b', s):
         return 4
+    if any(k in s for k in ["5th", "6th", "3rd year", "iii year", "3rd yr"]) or re.search(r'\b(5\d\d|6\d\d)\b', s):
+        return 3
+    if any(k in s for k in ["3rd", "4th", "2nd year", "ii year", "2nd yr"]) or re.search(r'\b(3\d\d|4\d\d|bt205)\b', s):
+        return 2
     return 2
 
 def normalize_single_section_name(raw_name: str, year: int = 2) -> Optional[str]:
@@ -58,37 +61,35 @@ def normalize_single_section_name(raw_name: str, year: int = 2) -> Optional[str]
         return None
     raw_clean = raw_name.strip().lower()
     
-    # Direct check in RAW_VARIANT_MAP
-    base_name = RAW_VARIANT_MAP.get(raw_clean)
-    if not base_name:
-        # Strip trailing year descriptors
-        cleaned = re.sub(r'\b(2nd|3rd|4th|ii|iii|iv)\s*(year|yr)?\b', '', raw_clean).strip()
-        base_name = RAW_VARIANT_MAP.get(cleaned)
-        
-    if not base_name:
-        # Fallback keyword checks
-        if "aiml" in raw_clean: base_name = "AIML"
-        elif "iot" in raw_clean: base_name = "IoT"
-        elif "it" in raw_clean: base_name = "IT"
-        elif "ds" in raw_clean or "data science" in raw_clean: base_name = "DS"
-        elif "cs-3" in raw_clean or "cse-3" in raw_clean or "cs 3" in raw_clean or "cs3" in raw_clean: base_name = "CS-3"
-        elif "cs-2" in raw_clean or "cse-2" in raw_clean or "cs 2" in raw_clean or "cs2" in raw_clean: base_name = "CS-2"
-        elif "cs-1" in raw_clean or "cse-1" in raw_clean or "cs 1" in raw_clean or "cs1" in raw_clean or "cs" in raw_clean: base_name = "CS-1"
-        elif "mech" in raw_clean or "me" in raw_clean: base_name = "ME"
+    # Check for bare CS / CSE (no branch number like 1/2/3)
+    if raw_clean in ["cs", "cse"]:
+        return "ambiguous_unassigned"
 
-    if not base_name:
-        return None
+    # IoT check
+    if "iot" in raw_clean:
+        return f"IoT_{year}" if year in [2, 3] else "IoT_2"
 
-    sec_id = f"{base_name}_{year}"
-    if sec_id in CANONICAL_SECTIONS:
-        return sec_id
-    
-    # Fallback to year 2 if year 3 doesn't exist for DS/ME
-    sec_id_2 = f"{base_name}_2"
-    if sec_id_2 in CANONICAL_SECTIONS:
-        return sec_id_2
-        
-    return None
+    # AIML check
+    if "aiml" in raw_clean or "ai-ml" in raw_clean or "ai&ml" in raw_clean:
+        return f"AIML_{year}" if year in [2, 3] else "AIML_2"
+
+    # IT check
+    if "it" in raw_clean and "iot" not in raw_clean and "unit" not in raw_clean:
+        return f"IT_{year}" if year in [2, 3] else "IT_2"
+
+    # DS check
+    if "ds" in raw_clean or "data science" in raw_clean:
+        return f"DS_{year}" if year in [2, 3] else "DS_2"
+
+    # Specific CS branch checks
+    if "cs-3" in raw_clean or "cse-3" in raw_clean or "cs 3" in raw_clean or "cs3" in raw_clean:
+        return f"CS-3_{year}" if year in [2, 3] else "CS-3_2"
+    if "cs-2" in raw_clean or "cse-2" in raw_clean or "cs 2" in raw_clean or "cs2" in raw_clean:
+        return f"CS-2_{year}" if year in [2, 3] else "CS-2_2"
+    if "cs-1" in raw_clean or "cse-1" in raw_clean or "cs 1" in raw_clean or "cs1" in raw_clean:
+        return f"CS-1_{year}" if year in [2, 3] else "CS-1_2"
+
+    return "ambiguous_unassigned"
 
 def normalize_section_entry(raw_section_name: str, semester_raw: Optional[str] = None) -> List[str]:
 
@@ -98,7 +99,6 @@ def normalize_section_entry(raw_section_name: str, semester_raw: Optional[str] =
     year = determine_year_from_semester(semester_raw)
     raw_str = raw_section_name.strip()
     
-    # Check for combined section delimiters (&, and, comma, slash)
     if any(delim in raw_str for delim in ["&", " and ", ",", "/"]):
         parts = re.split(r'&|\band\b|,|/', raw_str, flags=re.IGNORECASE)
         canonical_ids = []
@@ -106,12 +106,12 @@ def normalize_section_entry(raw_section_name: str, semester_raw: Optional[str] =
             p_clean = p.strip()
             if p_clean:
                 cid = normalize_single_section_name(p_clean, year)
-                if cid and cid not in canonical_ids:
+                if cid and cid != "ambiguous_unassigned" and cid not in canonical_ids:
                     canonical_ids.append(cid)
         return canonical_ids
     else:
         cid = normalize_single_section_name(raw_str, year)
-        return [cid] if cid else []
+        return [cid] if cid and cid != "ambiguous_unassigned" else []
 
 def calculate_workload_hours(records: List[Dict]) -> float:
 

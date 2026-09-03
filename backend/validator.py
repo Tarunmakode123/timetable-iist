@@ -35,28 +35,30 @@ def clean_name(name):
             name = name[len(prefix):]
     return name.replace(".", "").replace(" ", "").strip()
 
-def match_faculty_names(name_ld, name_fac, initials_fac):
-    cleaned_ld = clean_name(name_ld)
-    cleaned_fac = clean_name(name_fac)
-    
-    if not cleaned_ld or not cleaned_fac:
+def match_faculty_names(name_ld, name_fac, initials_fac=None):
+    if not name_ld or not name_fac:
         return False
-        
-    # Direct match
-    if cleaned_ld == cleaned_fac:
-        return True
+    c_ld = clean_name(name_ld)
+    c_fac = clean_name(name_fac)
     
-    # Substring match
-    if cleaned_fac in cleaned_ld or cleaned_ld in cleaned_fac:
+    if c_ld == c_fac:
         return True
         
-    # Initials check
     if initials_fac:
         initials_list = [i.strip().lower() for i in initials_fac.split(",") if i.strip()]
-        for initial in initials_list:
-            if initial and initial in cleaned_ld:
-                return True
-                
+        if c_ld in initials_list:
+            return True
+
+    import re
+    tokens_ld = set(re.findall(r'\w+', str(name_ld).lower())) - {"mr", "dr", "ms", "mrs", "prof"}
+    tokens_fac = set(re.findall(r'\w+', str(name_fac).lower())) - {"mr", "dr", "ms", "mrs", "prof"}
+    
+    if len(tokens_ld) >= 2 and len(tokens_fac) >= 2:
+        return tokens_ld == tokens_fac
+        
+    if tokens_ld and tokens_fac and tokens_ld.issubset(tokens_fac):
+        return True
+        
     return False
 
 def validate_all(db: Session):
