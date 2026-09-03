@@ -951,6 +951,11 @@
         }
 
         function populateViewItems() {
+            if (!Array.isArray(allSections)) allSections = [];
+            if (!Array.isArray(allFaculty)) allFaculty = [];
+            if (!Array.isArray(allRooms)) allRooms = [];
+            if (!Array.isArray(allSubjects)) allSubjects = [];
+
             const select = document.getElementById("view-item-select");
             const selectContainer = select.parentElement;
             select.innerHTML = "";
