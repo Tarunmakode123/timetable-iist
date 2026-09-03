@@ -590,6 +590,27 @@
         let highlightConflictIds = []; 
         let modifiedCellTsIds = []; // Slots affected by latest AI action
 
+        // ----------------- LIVE GENERATION REVEAL ANIMATION STATE -----------------
+        let activeGenerationId = null;
+        let animatedGenerationId = null;
+        let isGenerationAnimRunning = false;
+        let generationAnimTimer = null;
+
+        function cancelGenerationAnimImmediately() {
+            if (generationAnimTimer) {
+                clearTimeout(generationAnimTimer);
+                generationAnimTimer = null;
+            }
+            isGenerationAnimRunning = false;
+            const banner = document.getElementById("generation-progress-banner");
+            if (banner) banner.remove();
+        }
+
+        function skipGenerationAnimation() {
+            cancelGenerationAnimImmediately();
+            renderGrid(true);
+        }
+
         // ----------------- IN-APP TOAST & MODAL SYSTEM -----------------
         function showToast(message, type = "success", durationMs = 4500) {
             const container = document.getElementById("toast-container");
@@ -1267,7 +1288,9 @@
             }
         }
 
-        function renderGrid() {
+        function renderGrid(forceInstant = false) {
+            cancelGenerationAnimImmediately();
+
             if (selectedView === "master_load") {
                 renderMasterLoadTable();
                 return;
@@ -1312,8 +1335,14 @@
             
             document.getElementById("grid-subtitle").innerText = `Filtered by: ${selectedView.toUpperCase()} | Active CP-SAT Schedule`;
 
+            const shouldAnimateReveal = !forceInstant && activeGenerationId && (activeGenerationId !== animatedGenerationId);
+            if (shouldAnimateReveal) {
+                animatedGenerationId = activeGenerationId;
+            }
+
             const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
             const periodSequence = [1, 2, 3, 4, "LUNCH", 6, 7, 8];
+            const animQueue = [];
             
             days.forEach(day => {
                 const tr = document.createElement("tr");
@@ -1359,7 +1388,6 @@
                         cellConflicts.push(...matched);
                     });
 
-                    // Handle "Show Conflicts Only" toggle filter
                     if (showOnlyConflicts && cellConflicts.length === 0) {
                         const emptyTd = document.createElement("td");
                         emptyTd.className = "border border-[#EFEBE6] p-1 bg-[#FAF8F5]/30 opacity-40 min-h-[90px]";
@@ -1383,6 +1411,7 @@
                         cellTd.classList.add("ring-2", "ring-[#E8590C]", "ring-offset-1");
                     }
 
+                    const wrappers = [];
                     if (cellAssignments.length > 0) {
                         cellAssignments.forEach((a, index) => {
                             const wrapper = document.createElement("div");
@@ -1419,7 +1448,7 @@
                                     openAssignmentModal(a);
                                 });
                             }
-                            cellTd.appendChild(wrapper);
+                            wrappers.push(wrapper);
                         });
                     } else {
                         if (userRole === "admin") {
@@ -1428,12 +1457,76 @@
                             });
                         }
                     }
+
+                    if (shouldAnimateReveal) {
+                        animQueue.push({ cellTd, wrappers, day, period: p });
+                    } else {
+                        wrappers.forEach(w => cellTd.appendChild(w));
+                    }
                     
                     tr.appendChild(cellTd);
                 });
                 
                 body.appendChild(tr);
             });
+
+            if (shouldAnimateReveal && animQueue.length > 0) {
+                runSequentialRevealAnimation(animQueue);
+            }
+        }
+
+        function runSequentialRevealAnimation(animQueue) {
+            isGenerationAnimRunning = true;
+
+            const gridStatusBanner = document.getElementById("grid-status-banner");
+            const totalScheduled = animQueue.reduce((acc, item) => acc + item.wrappers.length, 0);
+
+            gridStatusBanner.className = "bg-orange-50 border-l-4 border-[#E8590C] p-3 rounded-r-lg mb-4 text-xs flex justify-between items-center transition shadow-sm animate-pulse";
+            gridStatusBanner.innerHTML = `
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-bolt text-[#E8590C] text-sm animate-spin"></i>
+                    <span class="font-bold text-[#211C1A]">Live CP-SAT Generation Reveal:</span>
+                    <span id="anim-progress-count" class="text-[#E8590C] font-bold">Placing classes — 0 of ${totalScheduled} scheduled...</span>
+                </div>
+                <button onclick="skipGenerationAnimation()" class="bg-[#E8590C] hover:bg-[#C74805] text-white text-[11px] font-bold px-3 py-1.5 rounded-xl transition shadow-sm flex items-center space-x-1">
+                    <i class="fa-solid fa-bolt"></i><span>⚡ Skip Reveal</span>
+                </button>
+            `;
+
+            let step = 0;
+            let placedCount = 0;
+
+            function stepAnimation() {
+                if (!isGenerationAnimRunning || step >= animQueue.length) {
+                    animQueue.slice(step).forEach(item => {
+                        item.wrappers.forEach(w => item.cellTd.appendChild(w));
+                    });
+                    isGenerationAnimRunning = false;
+                    updateGridStatusBanner();
+                    return;
+                }
+
+                const item = animQueue[step];
+                if (item.wrappers.length > 0) {
+                    item.wrappers.forEach(w => item.cellTd.appendChild(w));
+                    item.cellTd.classList.add("pulse-cell");
+                    placedCount += item.wrappers.length;
+
+                    const countElem = document.getElementById("anim-progress-count");
+                    if (countElem) {
+                        countElem.innerText = `Placing classes — ${placedCount} of ${totalScheduled} scheduled...`;
+                    }
+
+                    setTimeout(() => {
+                        item.cellTd.classList.remove("pulse-cell");
+                    }, 1200);
+                }
+
+                step++;
+                generationAnimTimer = setTimeout(stepAnimation, 35);
+            }
+
+            stepAnimation();
         }
 
         function renderConflicts(data) {
@@ -1659,6 +1752,8 @@
                 if (data.status === "success") {
                     isMasterDataStale = false;
                     document.getElementById("master-stale-banner").classList.add("hidden");
+                    
+                    activeGenerationId = "gen_" + Date.now();
                     
                     await fetchAllData();
                     updateDateVersionOptions(true);
@@ -1976,6 +2071,8 @@
                         const solveData = await solveRes.json();
                         isMasterDataStale = false;
                         document.getElementById("master-stale-banner").classList.add("hidden");
+                        
+                        activeGenerationId = "gen_" + Date.now();
                         
                         await fetchAllData();
                         updateDateVersionOptions(true);
