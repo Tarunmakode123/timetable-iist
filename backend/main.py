@@ -325,14 +325,21 @@ def get_conflicts(db: Session = Depends(get_db)):
 
 # 1. Faculty
 @app.get("/api/faculty")
-def get_faculty(db: Session = Depends(get_db)):
-    return db.query(Faculty).all()
+def get_faculty(dataset_mode: Optional[str] = "active", db: Session = Depends(get_db)):
+    if dataset_mode == "legacy_seed":
+        return db.query(Faculty).filter(Faculty.dataset_id == "legacy_seed_2024").all()
+    active_id = get_active_dataset_id(db)
+    return db.query(Faculty).filter(Faculty.dataset_id == active_id).all()
 
 @app.post("/api/faculty")
 def create_faculty(req: FacultyCreate, admin: User = Depends(require_admin), db: Session = Depends(get_db)):
     if db.query(Faculty).filter(Faculty.id == req.id).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Faculty ID already exists")
-    fac = Faculty(**req.dict())
+    active_id = get_active_dataset_id(db)
+    fac_data = req.dict()
+    fac_data["dataset_id"] = active_id
+    fac_data["dataset_source"] = "user_upload"
+    fac = Faculty(**fac_data)
     db.add(fac)
     db.commit()
     return fac
@@ -358,14 +365,21 @@ def delete_faculty(fac_id: str, admin: User = Depends(require_admin), db: Sessio
 
 # 2. Subjects
 @app.get("/api/subjects")
-def get_subjects(db: Session = Depends(get_db)):
-    return db.query(Subject).all()
+def get_subjects(dataset_mode: Optional[str] = "active", db: Session = Depends(get_db)):
+    if dataset_mode == "legacy_seed":
+        return db.query(Subject).filter(Subject.dataset_id == "legacy_seed_2024").all()
+    active_id = get_active_dataset_id(db)
+    return db.query(Subject).filter(Subject.dataset_id == active_id).all()
 
 @app.post("/api/subjects")
 def create_subject(req: SubjectCreate, admin: User = Depends(require_admin), db: Session = Depends(get_db)):
     if db.query(Subject).filter(Subject.id == req.id).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Subject ID already exists")
-    sub = Subject(**req.dict())
+    active_id = get_active_dataset_id(db)
+    sub_data = req.dict()
+    sub_data["dataset_id"] = active_id
+    sub_data["dataset_source"] = "user_upload"
+    sub = Subject(**sub_data)
     db.add(sub)
     db.commit()
     return sub
@@ -391,14 +405,21 @@ def delete_subject(sub_id: str, admin: User = Depends(require_admin), db: Sessio
 
 # 3. Rooms
 @app.get("/api/rooms")
-def get_rooms(db: Session = Depends(get_db)):
-    return db.query(Room).all()
+def get_rooms(dataset_mode: Optional[str] = "active", db: Session = Depends(get_db)):
+    if dataset_mode == "legacy_seed":
+        return db.query(Room).filter(Room.dataset_id == "legacy_seed_2024").all()
+    active_id = get_active_dataset_id(db)
+    return db.query(Room).filter(Room.dataset_id == active_id).all()
 
 @app.post("/api/rooms")
 def create_room(req: RoomCreate, admin: User = Depends(require_admin), db: Session = Depends(get_db)):
     if db.query(Room).filter(Room.id == req.id).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Room ID already exists")
-    room = Room(**req.dict())
+    active_id = get_active_dataset_id(db)
+    room_data = req.dict()
+    room_data["dataset_id"] = active_id
+    room_data["dataset_source"] = "user_upload"
+    room = Room(**room_data)
     db.add(room)
     db.commit()
     return room
@@ -424,9 +445,16 @@ def delete_room(room_id: str, admin: User = Depends(require_admin), db: Session 
 
 # 4. Sections & Batches
 @app.get("/api/sections")
-def get_sections(db: Session = Depends(get_db)):
+def get_sections(dataset_mode: Optional[str] = "active", db: Session = Depends(get_db)):
+    active_id = get_active_dataset_id(db)
+    query = db.query(Section)
+    if dataset_mode == "legacy_seed":
+        query = query.filter(Section.dataset_id == "legacy_seed_2024")
+    else:
+        query = query.filter(Section.dataset_id == active_id)
+        
     res = []
-    for s in db.query(Section).all():
+    for s in query.all():
         batches = db.query(Batch).filter(Batch.section_id == s.id).all()
         res.append({
             "id": s.id,
@@ -441,13 +469,17 @@ def get_sections(db: Session = Depends(get_db)):
 def create_section(req: SectionCreate, admin: User = Depends(require_admin), db: Session = Depends(get_db)):
     if db.query(Section).filter(Section.id == req.id).first():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Section ID already exists")
-    sec = Section(**req.dict())
+    active_id = get_active_dataset_id(db)
+    sec_data = req.dict()
+    sec_data["dataset_id"] = active_id
+    sec_data["dataset_source"] = "user_upload"
+    sec = Section(**sec_data)
     db.add(sec)
     db.commit()
     
     # Automatically create B1 & B2 batches
     for label in ["B1", "B2"]:
-        batch = Batch(id=f"{sec.id}_{label}", section_id=sec.id, label=label)
+        batch = Batch(id=f"{sec.id}_{label}", section_id=sec.id, label=label, dataset_id=active_id, dataset_source="user_upload")
         db.add(batch)
     db.commit()
     return sec
@@ -551,12 +583,19 @@ def delete_assignment(assign_id: int, admin: User = Depends(require_admin), db: 
 
 # 6. Load Distribution Master Data
 @app.get("/api/load-distribution")
-def get_load_distribution(db: Session = Depends(get_db)):
-    return db.query(LoadDistribution).all()
+def get_load_distribution(dataset_mode: Optional[str] = "active", db: Session = Depends(get_db)):
+    if dataset_mode == "legacy_seed":
+        return db.query(LoadDistribution).filter(LoadDistribution.dataset_id == "legacy_seed_2024").all()
+    active_id = get_active_dataset_id(db)
+    return db.query(LoadDistribution).filter(LoadDistribution.dataset_id == active_id).all()
 
 @app.post("/api/load-distribution")
 def create_load_distribution(req: LoadDistributionCreate, admin: User = Depends(require_admin), db: Session = Depends(get_db)):
-    entry = LoadDistribution(**req.dict())
+    active_id = get_active_dataset_id(db)
+    data = req.dict()
+    data["dataset_id"] = active_id
+    data["dataset_source"] = "user_upload"
+    entry = LoadDistribution(**data)
     if not entry.total_hours:
         entry.total_hours = (entry.theory_hours or 0.0) + (entry.practical_hours or 0.0)
     db.add(entry)

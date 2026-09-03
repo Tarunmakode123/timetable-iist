@@ -1,7 +1,8 @@
 import os
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
-from backend.database import Faculty, Subject, Section, Batch, Room, TimeSlot, Assignment, LoadDistribution
+from backend.database import Faculty, Subject, Section, Batch, Room, TimeSlot, Assignment, LoadDistribution, get_active_dataset_id
+from backend.section_normalizer import normalize_section_entry
 
 def solve_timetable(
     db: Session,
@@ -9,22 +10,26 @@ def solve_timetable(
     target_section_ids: Optional[List[str]] = None,
     target_faculty_ids: Optional[List[str]] = None
 ) -> Dict[str, Any]:
-    """
-    Pure-Python Constraint Satisfaction & Heuristic Solver for Timetable Generation & Partial Regeneration.
-    Enforces hard constraints (no double-booking, load limits, room types, parallel split-labs, lunch break)
-    and optimizes soft objectives (even weekly spread, capping consecutive hours, gap minimization).
-    Does not require external C++ binaries, ensuring ultra-lightweight Vercel serverless deployment.
-    """
     if pinned_assignment_ids is None:
         pinned_assignment_ids = []
 
-    # 1. Fetch domain data from DB
-    faculties = db.query(Faculty).all()
-    subjects = db.query(Subject).all()
-    sections = db.query(Section).all()
-    rooms = db.query(Room).all()
+    active_id = get_active_dataset_id(db)
+
+    # 1. Fetch domain data for active dataset
+    faculties = db.query(Faculty).filter(Faculty.dataset_id == active_id).all()
+    subjects = db.query(Subject).filter(Subject.dataset_id == active_id).all()
+    sections = db.query(Section).filter(Section.dataset_id == active_id).all()
+    rooms = db.query(Room).filter(Room.dataset_id == active_id).all()
     timeslots = db.query(TimeSlot).all()
-    load_entries = db.query(LoadDistribution).all()
+    load_entries = db.query(LoadDistribution).filter(LoadDistribution.dataset_id == active_id).all()
+
+    if not load_entries:
+        # Fallback to query all if active_id query returns empty
+        faculties = db.query(Faculty).all()
+        subjects = db.query(Subject).all()
+        sections = db.query(Section).all()
+        rooms = db.query(Room).all()
+        load_entries = db.query(LoadDistribution).all()
 
     if not load_entries:
         return {"status": "error", "message": "No LoadDistribution entries found to solve.", "assignments": []}

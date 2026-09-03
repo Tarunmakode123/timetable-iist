@@ -1,5 +1,6 @@
 import os
 import hashlib
+from datetime import datetime
 from sqlalchemy import create_engine, Column, String, Integer, Float, ForeignKey, DateTime
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 
@@ -54,6 +55,12 @@ Base = declarative_base()
 def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
+class SystemSetting(Base):
+    __tablename__ = "system_settings"
+    key = Column(String, primary_key=True)
+    value = Column(String, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 class User(Base):
     __tablename__ = "users"
     username = Column(String, primary_key=True)
@@ -70,6 +77,8 @@ class Faculty(Base):
     known_initials = Column(String, nullable=True)  # comma separated
     department = Column(String, nullable=True)
     max_weekly_hours = Column(Integer, default=16)
+    dataset_id = Column(String, default="legacy_seed_2024", nullable=True)
+    dataset_source = Column(String, default="legacy_seed", nullable=True)
 
     users = relationship("User", back_populates="faculty")
     assignments = relationship("Assignment", back_populates="faculty")
@@ -82,6 +91,8 @@ class Subject(Base):
     type = Column(String, nullable=False)  # 'theory' or 'lab'
     weekly_hours = Column(Integer, nullable=False)
     department = Column(String, nullable=True)
+    dataset_id = Column(String, default="legacy_seed_2024", nullable=True)
+    dataset_source = Column(String, default="legacy_seed", nullable=True)
 
     assignments = relationship("Assignment", back_populates="subject")
 
@@ -91,6 +102,8 @@ class Section(Base):
     name = Column(String, nullable=False)
     year = Column(Integer, nullable=False)
     department = Column(String, nullable=False)
+    dataset_id = Column(String, default="legacy_seed_2024", nullable=True)
+    dataset_source = Column(String, default="legacy_seed", nullable=True)
 
     batches = relationship("Batch", back_populates="section", cascade="all, delete-orphan")
     assignments = relationship("Assignment", back_populates="section")
@@ -100,6 +113,8 @@ class Batch(Base):
     id = Column(String, primary_key=True)  # e.g. CS_1_II_B1
     section_id = Column(String, ForeignKey("sections.id"), nullable=False)
     label = Column(String, nullable=False)  # e.g. B1, B2
+    dataset_id = Column(String, default="legacy_seed_2024", nullable=True)
+    dataset_source = Column(String, default="legacy_seed", nullable=True)
 
     section = relationship("Section", back_populates="batches")
     assignments = relationship("Assignment", back_populates="batch")
@@ -110,6 +125,8 @@ class Room(Base):
     name = Column(String, nullable=False)
     type = Column(String, nullable=False)  # 'classroom', 'lab', 'seminar_hall', 'other'
     capacity = Column(Integer, nullable=True)
+    dataset_id = Column(String, default="legacy_seed_2024", nullable=True)
+    dataset_source = Column(String, default="legacy_seed", nullable=True)
 
     assignments = relationship("Assignment", back_populates="room")
 
@@ -134,6 +151,8 @@ class Assignment(Base):
     effective_from = Column(String, nullable=False)  # YYYY-MM-DD
     effective_to = Column(String, nullable=True)  # YYYY-MM-DD, NULL=ongoing
     source = Column(String, nullable=False)  # 'csv', 'legacy', 'manual', 'solver', 'ai_assistant'
+    dataset_id = Column(String, default="legacy_seed_2024", nullable=True)
+    dataset_source = Column(String, default="legacy_seed", nullable=True)
 
     faculty = relationship("Faculty", back_populates="assignments")
     subject = relationship("Subject", back_populates="assignments")
@@ -152,6 +171,31 @@ class LoadDistribution(Base):
     theory_hours = Column(Float, default=0.0)
     practical_hours = Column(Float, default=0.0)
     total_hours = Column(Float, default=0.0)
+    dataset_id = Column(String, default="legacy_seed_2024", nullable=True)
+    dataset_source = Column(String, default="legacy_seed", nullable=True)
+
+def get_active_dataset_id(db) -> str:
+    setting = db.query(SystemSetting).filter(SystemSetting.key == "active_dataset_id").first()
+    if setting and setting.value:
+        return setting.value
+    return "ds_user_upload_current"
+
+def set_active_dataset_id(db, dataset_id: str, source: str = "user_upload"):
+    setting = db.query(SystemSetting).filter(SystemSetting.key == "active_dataset_id").first()
+    if not setting:
+        setting = SystemSetting(key="active_dataset_id", value=dataset_id)
+        db.add(setting)
+    else:
+        setting.value = dataset_id
+    
+    source_setting = db.query(SystemSetting).filter(SystemSetting.key == "active_dataset_source").first()
+    if not source_setting:
+        source_setting = SystemSetting(key="active_dataset_source", value=source)
+        db.add(source_setting)
+    else:
+        source_setting.value = source
+        
+    db.commit()
 
 def init_db():
     ensure_db_prepared()

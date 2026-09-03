@@ -62,18 +62,18 @@ def find_best_faculty_match(prompt: str, faculties: list):
     return best_faculty
 
 def find_best_section_match(prompt: str, sections: list):
+    from backend.section_normalizer import normalize_section_entry
+    cids = normalize_section_entry(prompt)
+    if cids:
+        for cid in cids:
+            matching = next((s for s in sections if s.id == cid), None)
+            if matching:
+                return matching
     prompt_clean = prompt.lower().replace(" ", "").replace("-", "").replace("_", "")
     for s in sections:
         clean_id = s.id.lower().replace(" ", "").replace("-", "").replace("_", "")
         clean_name = s.name.lower().replace(" ", "").replace("-", "").replace("_", "")
         if clean_id in prompt_clean or clean_name in prompt_clean:
-            return s
-        # Fuzzy shorthand like cs1 -> cs-1_2
-        if "cs1" in prompt_clean and "cs-1" in s.name.lower():
-            return s
-        if "iot" in prompt_clean and "iot" in s.name.lower():
-            return s
-        if "aiml" in prompt_clean and "aiml" in s.name.lower():
             return s
     return None
 
