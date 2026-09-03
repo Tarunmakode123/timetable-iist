@@ -884,15 +884,22 @@
                     fetch(`${API_URL}/api/load-distribution`, { headers: getAuthHeaders() })
                 ]);
                 
-                allFaculty = await facRes.json();
-                allSubjects = await subRes.json();
-                allRooms = await roomRes.json();
-                allSections = await secRes.json();
-                allTimeSlots = await tsRes.json();
-                allAssignments = await assignRes.json();
-                if (loadRes.ok) {
-                    allLoadDistribution = await loadRes.json();
-                }
+                const facData = await facRes.json();
+                const subData = await subRes.json();
+                const roomData = await roomRes.json();
+                const secData = await secRes.json();
+                const tsData = await tsRes.json();
+                const assignData = await assignRes.json();
+                const loadData = loadRes.ok ? await loadRes.json() : [];
+
+                allFaculty = Array.isArray(facData) ? facData : [];
+                allSubjects = Array.isArray(subData) ? subData : [];
+                allRooms = Array.isArray(roomData) ? roomData : [];
+                allSections = Array.isArray(secData) ? secData : [];
+                allTimeSlots = Array.isArray(tsData) ? tsData : [];
+                allAssignments = Array.isArray(assignData) ? assignData : [];
+                allLoadDistribution = Array.isArray(loadData) ? loadData : [];
+
                 updateDateVersionOptions();
             } catch (err) {
                 console.error("Error fetching data", err);
