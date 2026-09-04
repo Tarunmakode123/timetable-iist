@@ -1291,12 +1291,14 @@
                 }
             }
             
-            if (totalConflicts === 0) {
-                banner.className = "bg-emerald-50 border-l-4 border-emerald-500 p-3 rounded-r-lg mb-4 text-xs flex justify-between items-center transition shadow-sm";
-                statusText.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles text-emerald-600 text-sm"></i><span class="font-bold text-emerald-900">CP-SAT Optimized Timetable:</span> <span class="text-emerald-700">0 Hard Conflicts recorded across all sections. Schedule is fully valid & ready for production!</span>`;
-            } else {
-                banner.className = "bg-amber-50 border-l-4 border-amber-500 p-3 rounded-r-lg mb-4 text-xs flex justify-between items-center transition shadow-sm";
-                statusText.innerHTML = `<i class="fa-solid fa-database text-amber-600 text-sm"></i><span class="font-bold text-amber-900">Raw Legacy Excel Baseline Mode:</span> <span class="text-amber-800">${hardConflicts} hard clash(es) & ${totalConflicts - hardConflicts} warning(s) detected in legacy seed data. Click 'CP-SAT Auto-Generate' to optimize.</span>`;
+            if (banner && statusText) {
+                if (totalConflicts === 0) {
+                    banner.className = "bg-emerald-50 border-l-4 border-emerald-500 p-3 rounded-r-lg mb-4 text-xs flex justify-between items-center transition shadow-sm";
+                    statusText.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles text-emerald-600 text-sm"></i><span class="font-bold text-emerald-900">CP-SAT Optimized Timetable:</span> <span class="text-emerald-700">0 Hard Conflicts recorded across all sections. Schedule is fully valid & ready for production!</span>`;
+                } else {
+                    banner.className = "bg-amber-50 border-l-4 border-amber-500 p-3 rounded-r-lg mb-4 text-xs flex justify-between items-center transition shadow-sm";
+                    statusText.innerHTML = `<i class="fa-solid fa-database text-amber-600 text-sm"></i><span class="font-bold text-amber-900">Raw Legacy Excel Baseline Mode:</span> <span class="text-amber-800">${hardConflicts} hard clash(es) & ${totalConflicts - hardConflicts} warning(s) detected in legacy seed data. Click 'CP-SAT Auto-Generate' to optimize.</span>`;
+                }
             }
         }
 
@@ -1309,7 +1311,7 @@
             }
 
             const gridContainer = document.querySelector("#column-grid .overflow-x-auto");
-            if (!document.getElementById("grid-body")) {
+            if (gridContainer && !document.getElementById("grid-body")) {
                 gridContainer.innerHTML = `
                     <div class="overflow-x-auto border border-[#EFEBE6] rounded-xl shadow-sm scrollbar-thin">
                         <table class="w-full min-w-[920px] border-collapse text-center text-xs">
@@ -1334,18 +1336,18 @@
             }
 
             const gridStatusBanner = document.getElementById("grid-status-banner");
-            gridStatusBanner.classList.remove("hidden");
+            if (gridStatusBanner) gridStatusBanner.classList.remove("hidden");
             updateGridStatusBanner();
             
             const body = document.getElementById("grid-body");
-            body.innerHTML = "";
+            if (body) body.innerHTML = "";
             
             const gridTitle = document.getElementById("grid-title");
+            const gridSubtitle = document.getElementById("grid-subtitle");
             const select = document.getElementById("view-item-select");
-            const activeText = select.options.length > 0 ? select.options[select.selectedIndex].text : "No Selection";
-            gridTitle.innerText = `${activeText} - Timetable`;
-            
-            document.getElementById("grid-subtitle").innerText = `Filtered by: ${selectedView.toUpperCase()} | Active CP-SAT Schedule`;
+            const activeText = (select && select.options && select.selectedIndex >= 0 && select.options[select.selectedIndex]) ? select.options[select.selectedIndex].text : "No Selection";
+            if (gridTitle) gridTitle.innerText = `${activeText} - Timetable`;
+            if (gridSubtitle) gridSubtitle.innerText = `Filtered by: ${selectedView.toUpperCase()} | Active CP-SAT Schedule`;
 
             const shouldAnimateReveal = !forceInstant && activeGenerationId && (activeGenerationId !== animatedGenerationId);
             if (shouldAnimateReveal) {
@@ -1493,17 +1495,19 @@
             const gridStatusBanner = document.getElementById("grid-status-banner");
             const totalScheduled = animQueue.reduce((acc, item) => acc + item.wrappers.length, 0);
 
-            gridStatusBanner.className = "bg-orange-50 border-l-4 border-[#E8590C] p-3 rounded-r-lg mb-4 text-xs flex justify-between items-center transition shadow-sm animate-pulse";
-            gridStatusBanner.innerHTML = `
-                <div class="flex items-center space-x-2">
-                    <i class="fa-solid fa-bolt text-[#E8590C] text-sm animate-spin"></i>
-                    <span class="font-bold text-[#211C1A]">Live CP-SAT Generation Reveal:</span>
-                    <span id="anim-progress-count" class="text-[#E8590C] font-bold">Placing classes — 0 of ${totalScheduled} scheduled...</span>
-                </div>
-                <button onclick="skipGenerationAnimation()" class="bg-[#E8590C] hover:bg-[#C74805] text-white text-[11px] font-bold px-3 py-1.5 rounded-xl transition shadow-sm flex items-center space-x-1">
-                    <i class="fa-solid fa-bolt"></i><span>⚡ Skip Reveal</span>
-                </button>
-            `;
+            if (gridStatusBanner) {
+                gridStatusBanner.className = "bg-orange-50 border-l-4 border-[#E8590C] p-3 rounded-r-lg mb-4 text-xs flex justify-between items-center transition shadow-sm animate-pulse";
+                gridStatusBanner.innerHTML = `
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-bolt text-[#E8590C] text-sm animate-spin"></i>
+                        <span class="font-bold text-[#211C1A]">Live CP-SAT Generation Reveal:</span>
+                        <span id="anim-progress-count" class="text-[#E8590C] font-bold">Placing classes — 0 of ${totalScheduled} scheduled...</span>
+                    </div>
+                    <button onclick="skipGenerationAnimation()" class="bg-[#E8590C] hover:bg-[#C74805] text-white text-[11px] font-bold px-3 py-1.5 rounded-xl transition shadow-sm flex items-center space-x-1">
+                        <i class="fa-solid fa-bolt"></i><span>⚡ Skip Reveal</span>
+                    </button>
+                `;
+            }
 
             let step = 0;
             let placedCount = 0;
@@ -1543,18 +1547,23 @@
 
         function renderConflicts(data) {
             const list = document.getElementById("conflict-list");
+            if (!list) return;
             list.innerHTML = "";
             
             const badge = document.getElementById("conflict-badge");
             if (data.summary.total === 0) {
-                badge.className = "bg-green-100 text-green-800 text-xs px-2.5 py-0.5 rounded-full font-semibold";
-                badge.innerText = "No Conflicts";
+                if (badge) {
+                    badge.className = "bg-green-100 text-green-800 text-xs px-2.5 py-0.5 rounded-full font-semibold";
+                    badge.innerText = "No Conflicts";
+                }
                 list.innerHTML = `<div class="text-gray-500 text-center py-8"><i class="fa-solid fa-circle-check text-green-500 text-2xl mb-2"></i><br>Timetable is fully valid!</div>`;
                 return;
             }
             
-            badge.className = "bg-red-100 text-red-800 text-xs px-2.5 py-0.5 rounded-full font-semibold animate-pulse";
-            badge.innerText = `${data.summary.total} Issues`;
+            if (badge) {
+                badge.className = "bg-red-100 text-red-800 text-xs px-2.5 py-0.5 rounded-full font-semibold animate-pulse";
+                badge.innerText = `${data.summary.total} Issues`;
+            }
             
             data.conflicts.forEach(c => {
                 const item = document.createElement("div");
